@@ -72,17 +72,17 @@ class TestAdminConfig:
     async def test_config_has_sections(self, test_client):
         response = await test_client.get("/api/admin/config")
         data = response.json()
-        assert "app" in data
-        assert "database" in data
-        assert "ai" in data
-        assert "logging" in data
+        assert "ai_model_url" in data
+        assert "ai_model_name" in data
+        assert "ai_enabled" in data
+        assert "ai_request_timeout" in data
 
     async def test_config_does_not_expose_secrets(self, test_client):
         """API key moet niet volledig worden getoond."""
         response = await test_client.get("/api/admin/config")
         data = response.json()
-        # api_key_set is een boolean, geen echte key
-        assert "api_key" not in str(data["ai"]).lower() or "api_key_set" in str(data["ai"])
+        # ai_api_key is een lege string of gemaskeerd — geen echte key
+        assert data["ai_api_key"] in ("", "(ingesteld)")
 
 
 class TestAdminBackup:

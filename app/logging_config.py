@@ -11,8 +11,10 @@ Configureerbaar via omgevingsvariabelen:
 
 import json
 import logging
+import logging.handlers
 import os
 import sys
+from pathlib import Path
 from datetime import datetime, timezone
 
 
@@ -69,6 +71,7 @@ def setup_logging():
     """Configureer logging voor de hele applicatie.
 
     Leest LOG_LEVEL en LOG_FORMAT uit omgevingsvariabelen.
+    Schrijft naar console én logfile (data/app.log).
     """
     log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
     log_format = os.environ.get("LOG_FORMAT", "console").lower()
@@ -81,15 +84,38 @@ def setup_logging():
     # Verwijder bestaande handlers (bijv. van uvicorn tests)
     root_logger.handlers.clear()
 
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(level)
+    # Console handler
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(level)
 
     if log_format == "json":
-        handler.setFormatter(JsonFormatter())
+        console_handler.setFormatter(JsonFormatter())
     else:
-        handler.setFormatter(ConsoleFormatter())
+        console_handler.setFormatter(ConsoleFormatter())
 
-    root_logger.addHandler(handler)
+    root_logger.addHandler(console_handler)
+
+    # File handler — schrijft alles naar data/app.log (max 5MB, rotatie)
+    try:
+        import inspect
+        # Bepaal project root vanaf deze module
+        project_root = Path(inspect.getfile(setup_logging)).parent.parent
+        log_dir = project_root / "data"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log_file = str(log_dir / "app.log")
+
+        file_handler = logging.handlers.RotatingFileHandler(
+            log_file,
+            maxBytes=5 * 1024 * 1024,  # 5MB
+            backupCount=3,
+            encoding="utf-8",
+        )
+        file_handler.setLevel(level)
+        file_handler.setFormatter(ConsoleFormatter())  # leesbaar formaat voor admin UI
+        root_logger.addHandler(file_handler)
+    except Exception as e:
+        # Logfile is optioneel — niet crashen bij falen
+        pass
 
     # Verminder ruis van afhankelijke libraries
     logging.getLogger("uvicorn").setLevel(logging.WARNING)

@@ -8,11 +8,11 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
-from app.auth import ensure_admin_user, router as auth_router
+from app.auth import ensure_admin_user, router as auth_router, require_admin
 from app.csrf import CSRFMiddleware, router as csrf_router
 from app.database import init_db, get_db, DB_PATH
 from app.helpers import BASE_DIR, templates
-from app.models import DossierFile
+from app.models import DossierFile, User
 from app.search import create_fts_table
 from app.routes import dashboard, initiatives, hypotheses, dossier, curations, central_questions, mds, tags, ai
 from app.admin import router as admin_router
@@ -90,6 +90,21 @@ async def login_page(request: Request):
     """Login pagina — wordt geserveerd als HTML template."""
     from app.helpers import render_template
     return render_template("login.html", request=request, error="")
+
+
+@app.get("/admin")
+async def admin_page(
+    request: Request,
+    current_user: "User" = Depends(require_admin),
+):
+    """Admin beheerpagina — alleen toegankelijk voor admins."""
+    from app.helpers import render_template
+    return render_template(
+        "admin.html",
+        request=request,
+        active_page="admin",
+        current_user=current_user,
+    )
 
 # Route registries
 app.include_router(dashboard.router, tags=["dashboard"])

@@ -1009,6 +1009,18 @@
         </button>
       </nav>
 
+      <!-- Admin link (alleen voor admin-gebruikers, getoond via JS) -->
+      <nav class="nav-section" id="admin-nav" style="display:none;">
+        <div class="nav-label">Beheer</div>
+        <a href="/admin" class="nav-item {% if active_page == 'admin' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+            <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          Beheer
+        </a>
+      </nav>
+
       <!-- User section (bottom of sidebar) -->
       <div class="user-section" id="user-section" style="margin-top:auto; padding-top:16px; border-top:1px solid var(--border);">
         <div class="user-info" id="user-info" style="display:flex; align-items:center; gap:8px; padding:4px 0; font-size:13px; color:var(--muted);">
@@ -1326,17 +1338,25 @@
           document.getElementById('user-username').textContent = user.username + ' (' + user.role + ')';
           document.getElementById('logout-btn').style.display = 'flex';
           document.getElementById('login-link').style.display = 'none';
+          // Show admin nav for admin users
+          if (user.role === 'admin') {
+            document.getElementById('admin-nav').style.display = 'block';
+          } else {
+            document.getElementById('admin-nav').style.display = 'none';
+          }
         } else {
           // Not logged in - show login link
           document.getElementById('user-username').textContent = 'Niet ingelogd';
           document.getElementById('logout-btn').style.display = 'none';
           document.getElementById('login-link').style.display = 'flex';
+          document.getElementById('admin-nav').style.display = 'none';
         }
       } catch (e) {
         console.error('Auth check failed:', e);
         document.getElementById('user-username').textContent = 'Niet ingelogd';
         document.getElementById('logout-btn').style.display = 'none';
         document.getElementById('login-link').style.display = 'flex';
+        document.getElementById('admin-nav').style.display = 'none';
       }
     }
 

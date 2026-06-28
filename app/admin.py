@@ -5,19 +5,22 @@ Deze module biedt:
   - GET /api/admin/status — applicatiestatus met versie, DB-grootte, aantallen
   - GET /api/admin/config — huidige configuratie (geen secrets)
   - POST /api/admin/backup — database backup trigger
+  - POST /api/admin/restore — database restore van backup
+  - GET /api/admin/logs — logfile inhoud voor admin UI
 """
 
 import os
 import shutil
+import sqlite3
 import zipfile
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File as FastAPIFile
 
 from sqlalchemy.orm import Session
 
-from app.database import DB_PATH, get_db
+from app.database import DB_PATH, get_db, engine
 from app import ai_client
 from app.logging_config import logger
 from app.models import Initiative, Hypothesis, Curation, DossierNote, DossierFile
@@ -99,33 +102,42 @@ async def admin_status(db: Session = Depends(get_db)):
 
 
 @router.get("/api/admin/config")
-async def admin_config():
-    """Huidige configuratie (zonder secrets).
+async def admin_get_config():
+    """Haal huidige beheerconfiguratie op."""
+    from app.admin_config import get_config
+    return get_config()
 
-    Toont alle relevante omgevingsvariabelen zodat IT de setup kan verifiëren.
+
+@router.put("/api/admin/config")
+async def admin_update_config(updates: dict):
+    """Update beheerconfiguratie.
+
+    Beschikbare velden:
+      - ai_model_url: base URL van het model
+      - ai_model_name: naam van het model
+      - ai_api_key: API key (optioneel)
+      - ai_enabled: AI in/uit schakelen
+      - ai_request_timeout: timeout per request in seconden
+      - ai_temperature: creativiteit (0-1)
+      - ai_max_tokens: max tokens per antwoord
     """
-    config = {
-        "app": {
-            "host": os.environ.get("APP_HOST", "0.0.0.0"),
-            "port": os.environ.get("APP_PORT", "8000"),
-            "env": os.environ.get("APP_ENV", "development"),
-        },
-        "database": {
-            "path": DB_PATH,
-        },
-        "ai": {
-            "enabled": ai_client.AI_ENABLED,
-            "model_url": ai_client.MODEL_URL or "(niet ingesteld)",
-            "model_name": ai_client.MODEL_NAME,
-            "timeout_seconds": ai_client.REQUEST_TIMEOUT,
-            "api_key_set": bool(ai_client.MODEL_API_KEY),
-        },
-        "logging": {
-            "level": os.environ.get("LOG_LEVEL", "INFO"),
-            "format": os.environ.get("LOG_FORMAT", "console"),
-        },
+    from app.admin_config import update_config, get_ai_config_for_client
+    result = update_config(updates)
+
+    # Update ai_client module variabelen zodat wijzigingen direct effect hebben
+    ai_cfg = get_ai_config_for_client()
+    ai_client.MODEL_URL = ai_cfg["MODEL_URL"]
+    ai_client.MODEL_NAME = ai_cfg["MODEL_NAME"]
+    ai_client.MODEL_API_KEY = ai_cfg["MODEL_API_KEY"]
+    ai_client.AI_ENABLED = ai_cfg["AI_ENABLED"]
+    ai_client.REQUEST_TIMEOUT = ai_cfg["REQUEST_TIMEOUT"]
+
+    logger.info(f"Admin configuratie bijgewerkt: {list(updates.keys())}")
+    return {
+        "success": True,
+        "message": "Configuratie bijgewerkt",
+        "config": result,
     }
-    return config
 
 
 @router.post("/api/admin/backup")
@@ -229,3 +241,125 @@ async def admin_delete_backup(backup_name: str):
 
     backup_path.unlink()
     return {"success": True, "deleted": backup_name}
+
+
+@router.post("/api/admin/restore/{backup_name}")
+async def admin_restore_backup(backup_name: str):
+    """Herstel de database vanuit een backup.
+
+    Maakt automatisch een pre-restore backup van de huidige database.
+    """
+    db_dir = Path(os.path.dirname(DB_PATH)) if os.path.dirname(DB_PATH) else Path(".")
+    default_backup_dir = str(db_dir / "backups")
+    backup_dir = Path(os.environ.get("BACKUP_DIR", default_backup_dir))
+    backup_path = backup_dir / backup_name
+
+    if not backup_path.exists():
+        raise HTTPException(status_code=404, detail="Backup niet gevonden")
+
+    # Beveiliging: path traversal check
+    try:
+        resolved_backup = backup_path.resolve()
+        resolved_dir = backup_dir.resolve()
+        resolved_backup.relative_to(resolved_dir)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Ongeldige backup naam")
+
+    # Maak pre-restore backup van huidige database
+    if os.path.exists(DB_PATH):
+        pre_restore = backup_dir / f"pre_restore_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.db"
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            restore_conn = sqlite3.connect(str(pre_restore))
+            conn.backup(restore_conn)
+            restore_conn.close()
+            conn.close()
+        except Exception as e:
+            logger.error(f"Pre-restore backup mislukt: {e}")
+
+    # Herstel vanuit backup
+    try:
+        import tempfile
+        # Kopieer backup naar temp locatie eerst (valideren)
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+            tmp_path = Path(tmp.name)
+        shutil.copy2(str(backup_path), str(tmp_path))
+
+        # Valideer SQLite database
+        test_conn = sqlite3.connect(str(tmp_path))
+        test_conn.execute("SELECT count(*) FROM initiatives")
+        test_conn.close()
+
+        # Vervang huidige database
+        shutil.copy2(str(tmp_path), DB_PATH)
+        tmp_path.unlink()
+    except Exception as e:
+        logger.error(f"Restore mislukt: {e}")
+        raise HTTPException(status_code=500, detail=f"Restore mislukt: {e}")
+
+    logger.info(f"Database hersteld vanuit backup: {backup_name}")
+    return {
+        "success": True,
+        "restored_from": backup_name,
+        "message": "Database succesvol hersteld. Herstart de applicatie voor een schone start.",
+    }
+
+
+@router.get("/api/admin/logs")
+async def admin_view_logs(
+    lines: int = 200,
+    level: str = "",
+):
+    """Lees logfile inhoud voor admin UI.
+
+    Retourneert de laatste N regels van het logbestand.
+    Optioneel filteren op niveau (DEBUG, INFO, WARNING, ERROR).
+    """
+    # Bepaal logfile pad
+    try:
+        project_root = Path(__file__).parent.parent
+        log_file = project_root / "data" / "app.log"
+    except Exception:
+        log_file = None
+
+    if not log_file or not log_file.exists():
+        return {"lines": [], "total_lines": 0}
+
+    try:
+        with open(log_file, "r", encoding="utf-8") as f:
+            all_lines = f.readlines()
+
+        # Filter op niveau indien opgegeven
+        if level:
+            filtered = [l for l in all_lines if f"{level}:" in l or f"[{level}]" in l]
+        else:
+            filtered = all_lines
+
+        # Neem laatste N regels
+        result_lines = [l.rstrip() for l in filtered[-lines:]]
+
+        return {
+            "lines": result_lines,
+            "total_lines": len(filtered),
+            "file_size_bytes": log_file.stat().st_size if log_file.exists() else 0,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Kon logfile niet lezen: {e}")
+
+
+@router.post("/api/admin/logs/clear")
+async def admin_clear_logs():
+    """Wis het logbestand.
+
+    Let op: dit verwijdert alleen de inhoud van het bestand,
+    niet de logger-configuratie. Nieuwe logs worden automatisch opnieuw geschreven.
+    """
+    try:
+        project_root = Path(__file__).parent.parent
+        log_file = project_root / "data" / "app.log"
+        if log_file.exists():
+            log_file.unlink()
+            logger.info("Logbestand gewist door admin")
+        return {"success": True, "message": "Logbestand verwijdert"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Kon logfile niet wissen: {e}")

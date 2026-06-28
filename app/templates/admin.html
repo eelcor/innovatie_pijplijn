@@ -1,0 +1,549 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Beheerpaneel</h1>
+  <p style="color:var(--muted);font-size:14px;">Gebruikersbeheer, backups, logs en modelconfiguratie</p>
+</div>
+
+<!-- Tabs -->
+<div class="tabs" id="admin-tabs">
+  <button class="tab active" onclick="switchTab('users')">Gebruikers</button>
+  <button class="tab" onclick="switchTab('backup')">Backup & Restore</button>
+  <button class="tab" onclick="switchTab('logs')">Logs</button>
+  <button class="tab" onclick="switchTab('config')">Model Configuratie</button>
+</div>
+
+<!-- Tab: Gebruikersbeheer -->
+<div class="tab-content active" id="tab-users">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+    <h2 style="font-size:18px;font-weight:600;">Gebruikers</h2>
+    <button class="btn btn-primary" onclick="showAddUserModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+      Nieuwe gebruiker
+    </button>
+  </div>
+
+  <table class="data-table" id="users-table">
+    <thead>
+      <tr>
+        <th>Gebruikersnaam</th>
+        <th>Rol</th>
+        <th>Status</th>
+        <th>Laatste login</th>
+        <th style="width:120px;">Acties</th>
+      </tr>
+    </thead>
+    <tbody id="users-tbody">
+      <tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted);">Laden...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Tab: Backup & Restore -->
+<div class="tab-content" id="tab-backup">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+    <h2 style="font-size:18px;font-weight:600;">Backup & Restore</h2>
+    <button class="btn btn-primary" onclick="doBackup()" id="backup-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+        <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+        <polyline points="17,21 17,13 7,13 7,21"/>
+        <polyline points="7,3 7,8 15,8"/>
+      </svg>
+      Backup maken
+    </button>
+  </div>
+
+  <div class="card" style="margin-bottom:16px;">
+    <p style="font-size:13px;color:var(--muted);">
+      Backups worden opgeslagen in <code>data/backups/</code>. Er wordt maximaal 10 backups bewaard.
+    </p>
+  </div>
+
+  <table class="data-table" id="backups-table">
+    <thead>
+      <tr>
+        <th>Bestandsnaam</th>
+        <th>Grootte</th>
+        <th>Aangemaakt</th>
+        <th style="width:160px;">Acties</th>
+      </tr>
+    </thead>
+    <tbody id="backups-tbody">
+      <tr><td colspan="4" style="text-align:center;padding:32px;color:var(--muted);">Laden...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Tab: Logs -->
+<div class="tab-content" id="tab-logs">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+    <h2 style="font-size:18px;font-weight:600;">Logbestand</h2>
+    <div style="display:flex;gap:8px;">
+      <select id="log-level" onchange="loadLogs()" style="padding:6px 10px;font-size:13px;background:var(--surface);border:1px solid var(--border);color:var(--fg);font-family:var(--font-body);">
+        <option value="">Alle niveaus</option>
+        <option value="DEBUG">DEBUG</option>
+        <option value="INFO">INFO</option>
+        <option value="WARNING">WARNING</option>
+        <option value="ERROR">ERROR</option>
+      </select>
+      <button class="btn btn-secondary" onclick="loadLogs()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+          <polyline points="23,4 23,10 17,10"/>
+          <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
+        </svg>
+        Vernieuwen
+      </button>
+      <button class="btn btn-ghost" onclick="clearLogs()" style="color:var(--stopped);">
+        Wissen
+      </button>
+    </div>
+  </div>
+
+  <div id="log-container" style="background:var(--bg);border:1px solid var(--border);padding:12px;font-family:var(--font-mono);font-size:12px;max-height:600px;overflow-y:auto;line-height:1.7;">
+    <div style="text-align:center;padding:32px;color:var(--muted);">Laden...</div>
+  </div>
+</div>
+
+<!-- Tab: Model Configuratie -->
+<div class="tab-content" id="tab-config">
+  <h2 style="font-size:18px;font-weight:600;margin-bottom:16px;">Model Configuratie</h2>
+
+  <div class="card" style="max-width:700px;">
+    <form id="config-form" onsubmit="saveConfig(event)">
+      <div class="form-group">
+        <label for="ai_model_url">Model URL</label>
+        <input type="text" id="ai_model_url" name="ai_model_url" placeholder="http://beestjeai2.local:8033" style="width:100%;padding:8px 12px;font-size:14px;background:var(--surface);border:1px solid var(--border);color:var(--fg);font-family:var(--font-body);">
+        <p class="help-text">Base URL van het taalmodel (OpenAI-compatible)</p>
+      </div>
+
+      <div class="form-group">
+        <label for="ai_model_name">Model Naam</label>
+        <input type="text" id="ai_model_name" name="ai_model_name" placeholder="qwen3.6" style="width:100%;padding:8px 12px;font-size:14px;background:var(--surface);border:1px solid var(--border);color:var(--fg);font-family:var(--font-body);">
+        <p class="help-text">Naam van het model</p>
+      </div>
+
+      <div class="form-group">
+        <label for="ai_api_key">API Key</label>
+        <input type="password" id="ai_api_key" name="ai_api_key" placeholder="(optioneel)" style="width:100%;padding:8px 12px;font-size:14px;background:var(--surface);border:1px solid var(--border);color:var(--fg);font-family:var(--font-body);">
+        <p class="help-text">Laat leeg voor ongewijzigd. Alleen eerste 8 tekens worden getoond.</p>
+      </div>
+
+      <div class="form-group" style="display:flex;gap:24px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;">
+          <input type="checkbox" id="ai_enabled" name="ai_enabled" style="width:16px;height:16px;">
+          AI ingeschakeld
+        </label>
+      </div>
+
+      <div class="form-group">
+        <label for="ai_request_timeout">Request Timeout (seconden)</label>
+        <input type="number" id="ai_request_timeout" name="ai_request_timeout" min="10" max="600" value="120" style="width:100%;padding:8px 12px;font-size:14px;background:var(--surface);border:1px solid var(--border);color:var(--fg);font-family:var(--font-body);">
+        <p class="help-text">Maximale wachttijd per AI-aanroep</p>
+      </div>
+
+      <div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div>
+          <label for="ai_temperature">Temperature</label>
+          <input type="number" id="ai_temperature" name="ai_temperature" min="0" max="2" step="0.1" value="0.7" style="width:100%;padding:8px 12px;font-size:14px;background:var(--surface);border:1px solid var(--border);color:var(--fg);font-family:var(--font-body);">
+          <p class="help-text">Creativiteit (0-2, lager = deterministischer)</p>
+        </div>
+        <div>
+          <label for="ai_max_tokens">Max Tokens</label>
+          <input type="number" id="ai_max_tokens" name="ai_max_tokens" min="256" max="131072" step="256" value="8192" style="width:100%;padding:8px 12px;font-size:14px;background:var(--surface);border:1px solid var(--border);color:var(--fg);font-family:var(--font-body);">
+          <p class="help-text">Maximale tokens per antwoord</p>
+        </div>
+      </div>
+
+      <div style="margin-top:24px;">
+        <button type="submit" class="btn btn-primary" id="save-config-btn">Opslaan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add/Edit User Modal -->
+<div class="modal-overlay" id="modal-add-user">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <h2 class="modal-title" id="user-modal-title">Nieuwe gebruiker</h2>
+      <button class="modal-close" onclick="closeModal('add-user')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <form onsubmit="saveUser(event)">
+      <input type="hidden" id="edit-user-id" value="">
+      <div class="form-group">
+        <label for="new-username">Gebruikersnaam</label>
+        <input type="text" id="new-username" required minlength="1" maxlength="100" style="width:100%;padding:8px 12px;font-size:14px;background:var(--surface);border:1px solid var(--border);color:var(--fg);font-family:var(--font-body);">
+      </div>
+      <div class="form-group">
+        <label for="new-password">Wachtwoord</label>
+        <input type="password" id="new-password" minlength="4" maxlength="72" style="width:100%;padding:8px 12px;font-size:14px;background:var(--surface);border:1px solid var(--border);color:var(--fg);font-family:var(--font-body);">
+        <p class="help-text" id="password-help">Minimaal 4 tekens. Laat leeg bij aanpassen om wachtwoord ongewijzigd te laten.</p>
+      </div>
+      <div class="form-group">
+        <label for="new-role">Rol</label>
+        <select id="new-role" style="width:100%;padding:8px 12px;font-size:14px;background:var(--surface);border:1px solid var(--border);color:var(--fg);font-family:var(--font-body);">
+          <option value="viewer">Viewer (alleen lezen)</option>
+          <option value="editor">Editor (CRUD initiatieven)</option>
+          <option value="admin">Admin (alles)</option>
+        </select>
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" id="new-is-active" checked style="width:16px;height:16px;">
+        <label for="new-is-active" style="font-size:14px;">Actief</label>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px;">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('add-user')">Annuleren</button>
+        <button type="submit" class="btn btn-primary">Opslaan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Confirm Modal -->
+<div class="modal-overlay" id="modal-confirm">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <h2 class="modal-title">Bevestiging</h2>
+      <button class="modal-close" onclick="closeModal('confirm')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <p id="confirm-message" style="font-size:14px;color:var(--fg);margin-bottom:20px;"></p>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn btn-secondary" onclick="closeModal('confirm')">Annuleren</button>
+      <button class="btn btn-primary" id="confirm-btn" style="background:var(--stopped);">Bevestigen</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .tabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:24px; }
+  .tab {
+    padding:10px 20px; font-size:13px; font-weight:500; cursor:pointer;
+    background:none; border:none; color:var(--muted); font-family:var(--font-body);
+    border-bottom:2px solid transparent; transition:all 0.1s;
+  }
+  .tab:hover { color:var(--fg); }
+  .tab.active { color:var(--fg); border-bottom-color:var(--fg); }
+
+  .tab-content { display:none; }
+  .tab-content.active { display:block; }
+
+  .form-group { margin-bottom:16px; }
+  .form-group label { display:block; font-size:13px; font-weight:500; color:var(--fg); margin-bottom:4px; }
+  .help-text { font-size:12px; color:var(--muted); margin-top:4px; }
+
+  .role-badge {
+    display:inline-block; padding:2px 8px; font-size:11px; font-weight:600;
+    border-radius:3px; text-transform:uppercase; letter-spacing:0.04em;
+  }
+  .role-admin { background:oklch(90% 0.05 25); color:var(--accent); }
+  .role-editor { background:oklch(90% 0.03 145); color:var(--pilot); }
+  .role-viewer { background:oklch(95% 0.03 255); color:var(--verkenning); }
+
+  .status-active { color:var(--success); font-weight:500; }
+  .status-inactive { color:var(--stopped); font-weight:500; }
+
+  #log-container .log-error { color:var(--stopped); }
+  #log-container .log-warning { color:#b45309; }
+  #log-container .log-info { color:var(--success); }
+</style>
+
+<script>
+// Tab switching
+function switchTab(tabName) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('tab-' + tabName).classList.add('active');
+
+  // Load data for the tab
+  if (tabName === 'users') loadUsers();
+  else if (tabName === 'backup') loadBackups();
+  else if (tabName === 'logs') loadLogs();
+  else if (tabName === 'config') loadConfig();
+}
+
+// ===== Gebruikersbeheer =====
+
+async function loadUsers() {
+  try {
+    const users = await apiCall('/api/auth/users');
+    const tbody = document.getElementById('users-tbody');
+    if (!users.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted);">Geen gebruikers gevonden</td></tr>';
+      return;
+    }
+    tbody.innerHTML = users.map(u => `
+      <tr>
+        <td style="font-weight:500;">${escapeHtml(u.username)}</td>
+        <td><span class="role-badge role-${escapeHtml(u.role)}">${escapeHtml(u.role)}</span></td>
+        <td><span class="${u.is_active ? 'status-active' : 'status-inactive'}">${u.is_active ? 'Actief' : 'Inactief'}</span></td>
+        <td style="color:var(--muted);font-size:12px;">${u.last_login ? formatDateShort(u.last_login) : '-'}</td>
+        <td>
+          <button class="btn btn-ghost" onclick="editUser('${u.id}','${escapeHtml(u.username)}','${escapeHtml(u.role)}',${u.is_active})" style="padding:4px 8px;">Aanpassen</button>
+          <button class="btn btn-ghost" onclick="deleteUser('${u.id}','${escapeHtml(u.username)}')" style="padding:4px 8px;color:var(--stopped);">Verwijder</button>
+        </td>
+      </tr>
+    `).join('');
+  } catch (e) {
+    console.error('Users laden mislukt:', e);
+  }
+}
+
+function formatDateShort(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function showAddUserModal() {
+  document.getElementById('user-modal-title').textContent = 'Nieuwe gebruiker';
+  document.getElementById('edit-user-id').value = '';
+  document.getElementById('new-username').value = '';
+  document.getElementById('new-password').value = '';
+  document.getElementById('new-password').required = true;
+  document.getElementById('new-role').value = 'viewer';
+  document.getElementById('new-is-active').checked = true;
+  document.getElementById('password-help').textContent = 'Minimaal 4 tekens.';
+  openModal('add-user');
+}
+
+function editUser(id, username, role, isActive) {
+  document.getElementById('user-modal-title').textContent = 'Gebruiker aanpassen';
+  document.getElementById('edit-user-id').value = id;
+  document.getElementById('new-username').value = username;
+  document.getElementById('new-username').disabled = true;
+  document.getElementById('new-password').value = '';
+  document.getElementById('new-password').required = false;
+  document.getElementById('new-role').value = role;
+  document.getElementById('new-is-active').checked = isActive;
+  document.getElementById('password-help').textContent = 'Laat leeg om wachtwoord ongewijzigd te laten.';
+  openModal('add-user');
+}
+
+async function saveUser(event) {
+  event.preventDefault();
+  const id = document.getElementById('edit-user-id').value;
+  const username = document.getElementById('new-username').value;
+  const password = document.getElementById('new-password').value;
+  const role = document.getElementById('new-role').value;
+  const isActive = document.getElementById('new-is-active').checked;
+
+  try {
+    if (id) {
+      // Update existing user
+      const data = { role, is_active: isActive };
+      if (password) data.password = password;
+      await apiCall(`/api/auth/users/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+      showToast('Gebruiker bijgewerkt');
+    } else {
+      // Create new user
+      if (!password || password.length < 4) {
+        showToast('Wachtwoord moet minimaal 4 tekens bevatten');
+        return;
+      }
+      await apiCall('/api/auth/users/create', {
+        method: 'POST',
+        body: JSON.stringify({ username, password, role }),
+      });
+      showToast('Gebruiker aangemaakt');
+    }
+    closeModal('add-user');
+    loadUsers();
+  } catch (e) {
+    console.error('Save user failed:', e);
+  }
+}
+
+function deleteUser(userId, username) {
+  document.getElementById('confirm-message').textContent = `Weet je zeker dat je gebruiker "${username}" wilt verwijderen?`;
+  document.getElementById('confirm-btn').onclick = async () => {
+    try {
+      await apiCall(`/api/auth/users/${userId}`, { method: 'DELETE' });
+      showToast('Gebruiker verwijderd');
+      closeModal('confirm');
+      loadUsers();
+    } catch (e) {
+      console.error('Delete user failed:', e);
+    }
+  };
+  openModal('confirm');
+}
+
+// ===== Backup & Restore =====
+
+async function loadBackups() {
+  try {
+    const data = await apiCall('/api/admin/backups');
+    const tbody = document.getElementById('backups-tbody');
+    if (!data.backups.length) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--muted);">Geen backups gevonden</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.backups.map(b => `
+      <tr>
+        <td style="font-family:var(--font-mono);font-size:12px;">${escapeHtml(b.filename)}</td>
+        <td>${formatBytes(b.size_bytes)}</td>
+        <td style="color:var(--muted);font-size:12px;">${new Date(b.created_at).toLocaleString('nl-NL')}</td>
+        <td>
+          <button class="btn btn-ghost" onclick="restoreBackup('${escapeHtml(b.filename)}')" style="padding:4px 8px;">Herstel</button>
+          <button class="btn btn-ghost" onclick="deleteBackup('${escapeHtml(b.filename)}')" style="padding:4px 8px;color:var(--stopped);">Verwijder</button>
+        </td>
+      </tr>
+    `).join('');
+  } catch (e) {
+    console.error('Backups laden mislukt:', e);
+  }
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+async function doBackup() {
+  const btn = document.getElementById('backup-btn');
+  btn.disabled = true;
+  btn.textContent = 'Bezig...';
+  try {
+    const result = await apiCall('/api/admin/backup', { method: 'POST' });
+    showToast('Backup gemaakt: ' + result.database_backup.split('/').pop());
+    loadBackups();
+  } catch (e) {
+    console.error('Backup mislukt:', e);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg> Backup maken`;
+  }
+}
+
+function restoreBackup(filename) {
+  document.getElementById('confirm-message').textContent = `Weet je zeker dat je de database wilt herstellen vanuit "${filename}"? Huidige data wordt gebackupt.`;
+  document.getElementById('confirm-btn').onclick = async () => {
+    try {
+      await apiCall(`/api/admin/restore/${encodeURIComponent(filename)}`, { method: 'POST' });
+      showToast('Database hersteld. Herstart de applicatie voor een schone start.');
+      closeModal('confirm');
+    } catch (e) {
+      console.error('Restore failed:', e);
+    }
+  };
+  openModal('confirm');
+}
+
+function deleteBackup(filename) {
+  document.getElementById('confirm-message').textContent = `Weet je zeker dat je backup "${filename}" wilt verwijderen?`;
+  document.getElementById('confirm-btn').onclick = async () => {
+    try {
+      await apiCall(`/api/admin/backups/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+      showToast('Backup verwijderd');
+      closeModal('confirm');
+      loadBackups();
+    } catch (e) {
+      console.error('Delete backup failed:', e);
+    }
+  };
+  openModal('confirm');
+}
+
+// ===== Logs =====
+
+async function loadLogs() {
+  const level = document.getElementById('log-level').value;
+  try {
+    const data = await apiCall(`/api/admin/logs?lines=200&level=${encodeURIComponent(level)}`);
+    const container = document.getElementById('log-container');
+    if (!data.lines.length) {
+      container.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted);">Geen logs gevonden</div>';
+      return;
+    }
+    container.innerHTML = data.lines.map(line => {
+      let cls = '';
+      if (line.includes('ERROR:')) cls = 'log-error';
+      else if (line.includes('WARNING:')) cls = 'log-warning';
+      else if (line.includes('INFO:')) cls = 'log-info';
+      return `<div class="${cls}">${escapeHtml(line)}</div>`;
+    }).join('');
+    // Scroll to bottom
+    container.scrollTop = container.scrollHeight;
+  } catch (e) {
+    console.error('Logs laden mislukt:', e);
+  }
+}
+
+async function clearLogs() {
+  document.getElementById('confirm-message').textContent = 'Weet je zeker dat je het logbestand wilt wissen?';
+  document.getElementById('confirm-btn').onclick = async () => {
+    try {
+      await apiCall('/api/admin/logs/clear', { method: 'POST' });
+      showToast('Logbestand gewist');
+      closeModal('confirm');
+      loadLogs();
+    } catch (e) {
+      console.error('Clear logs failed:', e);
+    }
+  };
+  openModal('confirm');
+}
+
+// ===== Model Configuratie =====
+
+async function loadConfig() {
+  try {
+    const config = await apiCall('/api/admin/config');
+    document.getElementById('ai_model_url').value = config.ai_model_url || '';
+    document.getElementById('ai_model_name').value = config.ai_model_name || 'qwen3.6';
+    // API key wordt niet teruggelezen voor veiligheid — toon placeholder als er eentje is
+    document.getElementById('ai_api_key').value = '';
+    document.getElementById('ai_enabled').checked = config.ai_enabled !== false;
+    document.getElementById('ai_request_timeout').value = config.ai_request_timeout || 120;
+    document.getElementById('ai_temperature').value = config.ai_temperature || 0.7;
+    document.getElementById('ai_max_tokens').value = config.ai_max_tokens || 8192;
+  } catch (e) {
+    console.error('Config laden mislukt:', e);
+  }
+}
+
+async function saveConfig(event) {
+  event.preventDefault();
+  const btn = document.getElementById('save-config-btn');
+  btn.disabled = true;
+  btn.textContent = 'Opslaan...';
+
+  try {
+    const updates = {
+      ai_model_url: document.getElementById('ai_model_url').value,
+      ai_model_name: document.getElementById('ai_model_name').value,
+      ai_enabled: document.getElementById('ai_enabled').checked,
+      ai_request_timeout: parseInt(document.getElementById('ai_request_timeout').value),
+      ai_temperature: parseFloat(document.getElementById('ai_temperature').value),
+      ai_max_tokens: parseInt(document.getElementById('ai_max_tokens').value),
+    };
+
+    const apiKey = document.getElementById('ai_api_key').value;
+    if (apiKey) {
+      updates.ai_api_key = apiKey;
+    }
+
+    await apiCall('/api/admin/config', { method: 'PUT', body: JSON.stringify(updates) });
+    showToast('Configuratie opgeslagen');
+  } catch (e) {
+    console.error('Save config failed:', e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Opslaan';
+  }
+}
+
+// Load users on page load
+document.addEventListener('DOMContentLoaded', () => {
+  loadUsers();
+});
+</script>
+{% endblock %}
