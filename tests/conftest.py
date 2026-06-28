@@ -2,11 +2,16 @@
 
 import tempfile
 import os
+import uuid
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import create_engine as sa_create_engine, event, text
 from sqlalchemy.orm import sessionmaker, Session
+
+# Schakel CSRF validatie uit tijdens testen
+os.environ["TESTING"] = "true"
+os.environ.setdefault("APP_ADMIN_PASSWORD", "testadmin")
 
 
 # --- Test database setup ---
@@ -60,6 +65,33 @@ def test_db_engine(test_db_path):
 
 
 @pytest.fixture(scope="function")
+def mock_user(test_db_engine):
+    """Maak een mock admin gebruiker en override auth dependencies."""
+    from app.models import User
+    from app.auth import hash_password, create_session_token
+
+    _, TestSession, _ = test_db_engine
+    session = TestSession()
+
+    user = User(
+        id=str(uuid.uuid4()),
+        username="testadmin",
+        password_hash=hash_password("testpassword"),
+        is_admin=True,
+        is_active=True,
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    token = create_session_token(user.id, user.username, user.is_admin)
+
+    yield user, token
+
+    session.close()
+
+
+@pytest.fixture(scope="function")
 async def test_client(test_db_engine):
     """Maak een async test client met override van get_db."""
     engine, TestSession, _ = test_db_engine
@@ -79,6 +111,43 @@ async def test_client(test_db_engine):
     async with AsyncClient(
         transport=ASGITransport(app=main.app),
         base_url="http://test",
+    ) as ac:
+        yield ac
+
+    main.app.dependency_overrides.clear()
+
+
+@pytest.fixture(scope="function")
+async def auth_client(test_db_engine, mock_user):
+    """Test client met ingelogde gebruiker (session cookie + CSRF token)."""
+    engine, TestSession, _ = test_db_engine
+    user, session_token = mock_user
+
+    from app import main, database
+    from app.csrf import generate_csrf_token
+
+    def override_get_db():
+        """Sync generator om te matchen met de originele get_db()."""
+        session = TestSession()
+        try:
+            yield session
+        finally:
+            session.close()
+
+    main.app.dependency_overrides[database.get_db] = override_get_db
+
+    csrf_token = generate_csrf_token()
+
+    async with AsyncClient(
+        transport=ASGITransport(app=main.app),
+        base_url="http://test",
+        cookies={
+            "session": session_token,
+            "csrf_token": csrf_token,
+        },
+        headers={
+            "X-CSRF-Token": csrf_token,
+        },
     ) as ac:
         yield ac
 

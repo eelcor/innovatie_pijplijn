@@ -472,20 +472,32 @@ async def upload_vraag_bestand(question_id: str, file: UploadFile, db: Session =
     ensure_storage_dir(storage_path)
     full_path = os.path.join(UPLOAD_DIR, storage_path)
 
-    with open(full_path, "wb") as f:
-        f.write(content)
+    try:
+        # Eerst bestand schrijven
+        with open(full_path, "wb") as f:
+            f.write(content)
 
-    # Database record — originele filename als metadata
-    db_file = CentralQuestionFile(
-        central_question_id=question_id,
-        filename=file.filename,
-        mime_type=file.content_type or "application/octet-stream",
-        file_size=len(content),
-        storage_path=storage_path,
-    )
-    db.add(db_file)
-    db.commit()
-    db.refresh(db_file)
+        # Database record — originele filename als metadata
+        db_file = CentralQuestionFile(
+            central_question_id=question_id,
+            filename=file.filename,
+            mime_type=file.content_type or "application/octet-stream",
+            file_size=len(content),
+            storage_path=storage_path,
+        )
+        db.add(db_file)
+        db.commit()
+        db.refresh(db_file)
+
+    except Exception:
+        # Ruim bestand op bij DB-fout
+        if os.path.exists(full_path):
+            os.remove(full_path)
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Bestand kon niet worden opgeslagen",
+        )
 
     return {
         "id": db_file.id,

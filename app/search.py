@@ -59,11 +59,15 @@ def rebuild_fts_index(db):
         INSERT INTO search_index(content, content_rowid)
         SELECT name, id FROM tags WHERE is_active = 1
     """))
-    db.commit()
 
 
 def update_fts_initiative(db, initiative_id: str, title: str, description: str = ""):
-    """Update FTS index voor een initiatief."""
+    """Update FTS index voor een initiatief.
+
+    Let op: deze functie commit NIET. De aanroepende code is verantwoordelijk
+    voor het committen van de transactie. Dit zorgt voor atomaire updates
+    waarbij FTS en brongegevens samen worden gecommittet.
+    """
     _ensure_fts_table(db)
     content = f"{title} {description}".strip()
     db.execute(
@@ -74,7 +78,6 @@ def update_fts_initiative(db, initiative_id: str, title: str, description: str =
         text("INSERT INTO search_index(content, content_rowid) VALUES(:content, :rid)"),
         {"content": content, "rid": initiative_id},
     )
-    db.commit()
 
 
 def update_fts_hypothesis(db, hypothesis_id: str, description: str, learning: str = ""):
@@ -89,7 +92,6 @@ def update_fts_hypothesis(db, hypothesis_id: str, description: str, learning: st
         text("INSERT INTO search_index(content, content_rowid) VALUES(:content, :rid)"),
         {"content": content, "rid": hypothesis_id},
     )
-    db.commit()
 
 
 def update_fts_note(db, note_id: str, body: str, title: str = ""):
@@ -104,7 +106,6 @@ def update_fts_note(db, note_id: str, body: str, title: str = ""):
         text("INSERT INTO search_index(content, content_rowid) VALUES(:content, :rid)"),
         {"content": content, "rid": note_id},
     )
-    db.commit()
 
 
 def update_fts_curation(db, curation_id: str, name: str, description: str = ""):
@@ -119,7 +120,6 @@ def update_fts_curation(db, curation_id: str, name: str, description: str = ""):
         text("INSERT INTO search_index(content, content_rowid) VALUES(:content, :rid)"),
         {"content": content, "rid": curation_id},
     )
-    db.commit()
 
 
 def update_fts_central_question(db, question_id: str, question: str, description: str = ""):
@@ -134,7 +134,6 @@ def update_fts_central_question(db, question_id: str, question: str, description
         text("INSERT INTO search_index(content, content_rowid) VALUES(:content, :rid)"),
         {"content": content, "rid": question_id},
     )
-    db.commit()
 
 
 def search(db, query: str, limit: int = 50):

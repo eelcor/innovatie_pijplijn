@@ -109,6 +109,7 @@ async def bestand_uploaden(initiative_id: str, file: UploadFile, db: Session = D
     """Bestand uploaden naar dossier.
 
     Uses UUID-based storage paths. Original filename stored only as metadata.
+    File write + DB commit are atomic — bij DB-fout wordt het bestand opgeruimd.
     """
     contents = await file.read()
     if len(contents) > MAX_FILE_SIZE:
@@ -121,21 +122,33 @@ async def bestand_uploaden(initiative_id: str, file: UploadFile, db: Session = D
     ensure_storage_dir(storage_path)
     full_path = os.path.join(BASE_DIR, storage_path)
 
-    with open(full_path, "wb") as f:
-        f.write(contents)
+    try:
+        # Eerst bestand schrijven
+        with open(full_path, "wb") as f:
+            f.write(contents)
 
-    mime_type = mimetypes.guess_type(file.filename or "")[0] or "application/octet-stream"
+        mime_type = mimetypes.guess_type(file.filename or "")[0] or "application/octet-stream"
 
-    dossier_file = DossierFile(
-        initiative_id=initiative_id,
-        filename=file.filename,
-        mime_type=mime_type,
-        file_size=len(contents),
-        storage_path=storage_path,
-    )
-    db.add(dossier_file)
-    db.commit()
-    db.refresh(dossier_file)
+        dossier_file = DossierFile(
+            initiative_id=initiative_id,
+            filename=file.filename,
+            mime_type=mime_type,
+            file_size=len(contents),
+            storage_path=storage_path,
+        )
+        db.add(dossier_file)
+        db.commit()
+        db.refresh(dossier_file)
+
+    except Exception:
+        # Ruim bestand op bij DB-fout
+        if os.path.exists(full_path):
+            os.remove(full_path)
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Bestand kon niet worden opgeslagen",
+        )
 
     return {
         "id": dossier_file.id,

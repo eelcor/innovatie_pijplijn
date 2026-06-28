@@ -335,3 +335,22 @@ class QuestionTag(Base):
     # Relaties
     central_question = relationship("CentralQuestion")
     tag = relationship("Tag", back_populates="question_tags")
+
+
+# --- Auth ---
+
+class User(Base):
+    """Authenticatie-gebruiker.
+
+    Eenvoudige sessie-based auth voor lokale/MVP gebruik.
+    Passwords zijn gehashed met bcrypt.
+    """
+    __tablename__ = "users"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    username = Column(String(100), unique=True, nullable=False, index=True)
+    password_hash = Column(String(255), nullable=False)  # bcrypt hash
+    is_admin = Column(Boolean, default=False, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    last_login = Column(DateTime, nullable=True)

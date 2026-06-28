@@ -23,8 +23,8 @@ import httpx
 MODEL_URL = os.environ.get("MODEL_URL", "").rstrip("/")
 MODEL_NAME = os.environ.get("MODEL_NAME", "qwen3.6")
 MODEL_API_KEY = os.environ.get("MODEL_API_KEY", "")
-# AI standaard uitgeschakeld — expliciet inschakelen via AI_ENABLED=true
-AI_ENABLED = os.environ.get("AI_ENABLED", "false").lower() in ("true", "1", "yes")
+# AI standaard ingeschakeld — uitschakelen via AI_ENABLED=false
+AI_ENABLED = os.environ.get("AI_ENABLED", "true").lower() in ("true", "1", "yes")
 
 # Logger voor AI audit trail
 logger = logging.getLogger(__name__)

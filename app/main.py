@@ -8,6 +8,8 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
+from app.auth import ensure_admin_user, router as auth_router
+from app.csrf import CSRFMiddleware, router as csrf_router
 from app.database import init_db, get_db, DB_PATH
 from app.helpers import BASE_DIR, templates
 from app.models import DossierFile
@@ -37,6 +39,13 @@ async def lifespan(app: FastAPI):
     backup_dir = os.environ.get("BACKUP_DIR", os.path.join(os.path.dirname(DB_PATH) or ".", "backups"))
     os.makedirs(backup_dir, exist_ok=True)
 
+    # Creëer admin gebruiker als APP_ADMIN_PASSWORD is ingesteld
+    db_admin = next(get_db())
+    try:
+        ensure_admin_user(db_admin)
+    finally:
+        db_admin.close()
+
     # Startup validatie en logging
     logger.info("Innovatiepijplijn start-up")
     logger.info(f"Database: {DB_PATH}")
@@ -64,8 +73,16 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# CSRF middleware — beschermt alle POST/PUT/DELETE/PATCH routes
+app.add_middleware(CSRFMiddleware)
+
 # Static files
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "app", "static")), name="static")
+
+# Auth routes (login/logout/user management) — geen CSRF nodig op deze endpoints
+# (CSRF wordt toegepast via middleware maar auth routes hebben eigen sessie-beheer)
+app.include_router(auth_router, prefix="/api/auth", tags=["authenticatie"])
+app.include_router(csrf_router, prefix="/api/auth", tags=["csrf"])
 
 # Route registries
 app.include_router(dashboard.router, tags=["dashboard"])

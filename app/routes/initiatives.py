@@ -129,53 +129,62 @@ async def initiatief_detail(request: Request, initiative_id: str, db: Session = 
 
 @router.post("/create")
 async def initiatief_aanmaken(data: InitiativeCreate, db: Session = Depends(get_db)):
-    """F1 — Initiatief aanmaken."""
-    initiative = Initiative(
-        title=data.title,
-        description=data.description,
-        phase=data.phase,
-        horizon=data.horizon,
-        mds=data.mds,
-        mds_id=data.mds_id,
-        central_question=data.central_question,
-        trekker=data.trekker,
-        owner=data.owner,
-        type_ai_gebruik=data.type_ai_gebruik,
-    )
-    db.add(initiative)
-    db.commit()
-    db.refresh(initiative)
+    """F1 — Initiatief aanmaken.
 
-    # Koppel centrale vragen indien opgegeven
-    if data.central_question_ids:
-        for qid in data.central_question_ids:
-            link = InitiativeQuestion(
-                initiative_id=initiative.id,
-                central_question_id=qid,
-            )
-            db.add(link)
+    Gebruikt een atomaire transactie: initiatief + koppelingen + FTS + changelog
+    worden in één commit gedaan. Bij fout wordt alles teruggedraaid.
+    """
+    try:
+        initiative = Initiative(
+            title=data.title,
+            description=data.description,
+            phase=data.phase,
+            horizon=data.horizon,
+            mds=data.mds,
+            mds_id=data.mds_id,
+            central_question=data.central_question,
+            trekker=data.trekker,
+            owner=data.owner,
+            type_ai_gebruik=data.type_ai_gebruik,
+        )
+        db.add(initiative)
+        db.flush()  # Genereer ID zonder te committen
 
-    # Koppel tags indien opgegeven
-    if data.tag_ids:
-        for tid in data.tag_ids:
-            tag_link = InitiativeTag(
-                initiative_id=initiative.id,
-                tag_id=tid,
-            )
-            db.add(tag_link)
+        # Koppel centrale vragen indien opgegeven
+        if data.central_question_ids:
+            for qid in data.central_question_ids:
+                link = InitiativeQuestion(
+                    initiative_id=initiative.id,
+                    central_question_id=qid,
+                )
+                db.add(link)
 
-    db.commit()
+        # Koppel tags indien opgegeven
+        if data.tag_ids:
+            for tid in data.tag_ids:
+                tag_link = InitiativeTag(
+                    initiative_id=initiative.id,
+                    tag_id=tid,
+                )
+                db.add(tag_link)
 
-    update_fts_initiative(
-        db, initiative.id, initiative.title, initiative.description or ""
-    )
+        # Update FTS index
+        update_fts_initiative(
+            db, initiative.id, initiative.title, initiative.description or ""
+        )
 
-    # Log creation
-    _log_change(db, initiative.id, "created", None, {
-        "title": initiative.title,
-        "phase": initiative.phase,
-        "status": initiative.status,
-    })
+        # Log creation
+        _log_change(db, initiative.id, "created", None, {
+            "title": initiative.title,
+            "phase": initiative.phase,
+            "status": initiative.status,
+        })
+
+        # Één atomaire commit voor alle wijzigingen
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
 
     return {
         "id": initiative.id,
