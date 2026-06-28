@@ -67,7 +67,11 @@ def update_config(updates: dict) -> dict:
     allowed_keys = set(DEFAULT_CONFIG.keys())
     for key, value in updates.items():
         if key in allowed_keys:
-            config[key] = value
+            # Strip trailing slashes from model URL
+            if key == "ai_model_url" and isinstance(value, str):
+                config[key] = value.rstrip("/")
+            else:
+                config[key] = value
     _save(config)
 
     # Retourneer zonder API key
@@ -91,8 +95,8 @@ def get_ai_config_for_client() -> dict:
     env_enabled = os.environ.get("AI_ENABLED", "true").lower() in ("true", "1", "yes")
     env_timeout = float(os.environ.get("AI_REQUEST_TIMEOUT", "120"))
 
-    # Admin config heeft prioriteit boven environment
-    model_url = config.get("ai_model_url") or env_url
+    # Admin config heeft prioriteit boven environment (strip trailing slash)
+    model_url = (config.get("ai_model_url") or "").rstrip("/") or env_url
     model_name = config.get("ai_model_name") or env_name
     api_key = config.get("ai_api_key") or env_key
     ai_enabled = config.get("ai_enabled", env_enabled)
