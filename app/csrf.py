@@ -43,6 +43,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
     # Routes die vrijgesteld zijn van CSRF (bijv. login, health)
     EXEMPT_PATHS = {
         "/api/auth/login",
+        "/api/auth/logout",
         "/health",
     }
 
