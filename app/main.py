@@ -84,6 +84,13 @@ app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "app", "static
 app.include_router(auth_router, prefix="/api/auth", tags=["authenticatie"])
 app.include_router(csrf_router, prefix="/api/auth", tags=["csrf"])
 
+
+@app.get("/login")
+async def login_page(request: Request):
+    """Login pagina — wordt geserveerd als HTML template."""
+    from app.helpers import render_template
+    return render_template("login.html", request=request, error="")
+
 # Route registries
 app.include_router(dashboard.router, tags=["dashboard"])
 app.include_router(initiatives.router, prefix="/api/initiatieven", tags=["initiatieven"])
