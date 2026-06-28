@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environment
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Database files (SQLite)
+*.db
+*.sqlite
+*.sqlite3
+
+# Data directory — contains DB, uploads, backups
+data/
+
+# Environment variables
+.env
+.env.local
+
+# Test artifacts
+.pytest_cache/
+htmlcov/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

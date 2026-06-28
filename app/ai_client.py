@@ -11,7 +11,9 @@ Configuratie via omgevingsvariabelen:
 """
 
 import json
+import logging
 import os
+import time
 from typing import Optional
 
 import httpx
@@ -23,6 +25,9 @@ MODEL_NAME = os.environ.get("MODEL_NAME", "qwen3.6")
 MODEL_API_KEY = os.environ.get("MODEL_API_KEY", "")
 # AI standaard uitgeschakeld — expliciet inschakelen via AI_ENABLED=true
 AI_ENABLED = os.environ.get("AI_ENABLED", "false").lower() in ("true", "1", "yes")
+
+# Logger voor AI audit trail
+logger = logging.getLogger(__name__)
 
 # Standaard timeout per request (seconden)
 # 120s is enough for most prompts; prevents runaway costs on slow models
@@ -75,6 +80,7 @@ async def call_model(
         "max_tokens": max_tokens,
     }
 
+    start_time = time.time()
     async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
         try:
             response = await client.post(url, headers=headers, json=payload)
@@ -89,6 +95,14 @@ async def call_model(
             reasoning = message.get("reasoning_content", "")
             usage = data.get("usage", {})
             completion_tokens = usage.get("completion_tokens", 0)
+            prompt_tokens = usage.get("prompt_tokens", 0)
+            duration_s = time.time() - start_time
+
+            # Audit log: endpoint, model, tokens, duration
+            logger.info(
+                "AI request completed | model=%s | prompt_tokens=%d | completion_tokens=%d | duration=%.1fs",
+                MODEL_NAME, prompt_tokens, completion_tokens, duration_s,
+            )
 
             if not content and reasoning and completion_tokens > 0:
                 # Thinking-model: content is leeg omdat max_tokens op was
@@ -98,8 +112,12 @@ async def call_model(
                 return "[Model gaf een leeg antwoord]"
             return content.strip()
         except httpx.ConnectError:
+            duration_s = time.time() - start_time
+            logger.warning("AI connect error | model=%s | duration=%.1fs", MODEL_NAME, duration_s)
             return f"[Verbindingsfout — kan niet verbinden met {url}]"
         except httpx.TimeoutException:
+            duration_s = time.time() - start_time
+            logger.warning("AI timeout | model=%s | duration=%.1fs", MODEL_NAME, duration_s)
             return f"[Timeout — model reageerde niet binnen {REQUEST_TIMEOUT}s]"
         except httpx.HTTPStatusError as e:
             body = ""

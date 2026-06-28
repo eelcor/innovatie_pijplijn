@@ -22,6 +22,7 @@ from app.schemas import (
     CentralQuestionUpdate,
 )
 from app.search import update_fts_central_question
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 router = APIRouter()
@@ -37,15 +38,13 @@ async def centrale_vragen_lijst(request: Request, db: Session = Depends(get_db))
         .all()
     )
 
-    # Teller per vraag: hoeveel initiatieven gebruiken deze vraag
-    question_counts = {}
-    for q in questions:
-        count = (
-            db.query(InitiativeQuestion)
-            .filter(InitiativeQuestion.central_question_id == q.id)
-            .count()
-        )
-        question_counts[q.id] = count
+    # Teller per vraag: hoeveel initiatieven gebruiken deze vraag (SQL aggregation)
+    count_rows = (
+        db.query(InitiativeQuestion.central_question_id, func.count(InitiativeQuestion.initiative_id))
+        .group_by(InitiativeQuestion.central_question_id)
+        .all()
+    )
+    question_counts = {row[0]: row[1] for row in count_rows}
 
     # Aantal initiatieven zonder centrale vraag
     total_initiatives = db.query(Initiative).filter(
