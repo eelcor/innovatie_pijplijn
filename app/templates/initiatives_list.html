@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Initiatieven — Innovatiepijplijn{% endblock %}
+
+{% set active_page = 'initiatieven' %}
+
+{% block content %}
+<header class="page-header">
+  <div>
+    <h1 class="page-title">Initiatieven</h1>
+    <p class="page-subtitle">Alle geregistreerde innovatie-initiatieven</p>
+  </div>
+  <div class="header-actions">
+    <div class="search-bar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="11" cy="11" r="8"/>
+        <path d="M21 21l-4.35-4.35"/>
+      </svg>
+      <input type="text" placeholder="Zoeken..." id="search-input">
+      <kbd>⌘K</kbd>
+    </div>
+    <button class="btn btn-primary" onclick="openModal('new-initiative')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+      Nieuw initiatief
+    </button>
+  </div>
+</header>
+
+<!-- Filter dropdown panel -->
+{% include "partials/filter_panel.html" %}
+
+<!-- Initiatives container -->
+<div id="initiatives-container"></div>
+
+<!-- Result count -->
+<div id="result-count" style="margin-top: 8px; font-size: 12px; color: var(--muted); text-align: right;"></div>
+{% endblock %}
+

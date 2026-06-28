@@ -1,0 +1,44 @@
+{# Partial: AI initiatief-suggesties voor een curatie #}
+<div id="ai-curation-suggest" style="padding: 20px; background: var(--surface); border: 1px solid var(--border);">
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="18" height="18" style="color: var(--accent);">
+            <path d="M12 2a4 4 0 014 4v2a4 4 0 01-8 0V6a4 4 0 014-4z"/>
+            <path d="M6 10v1a6 6 0 0012 0v-1"/>
+            <path d="M12 17v3"/>
+            <path d="M8 20h8"/>
+        </svg>
+        <h3 style="font-size: 14px; font-weight: 600; color: var(--fg);">Initiatief-suggesties</h3>
+    </div>
+    <p style="font-size: 13px; color: var(--muted); margin-bottom: 16px; line-height: 1.5;">
+        Laat het taalmodel initiatieven voorstellen die passen bij deze curatie.
+    </p>
+
+    <button
+        type="button"
+        hx-post="/api/ai/curaties/{{ curation_id }}/suggest-initiatives"
+        hx-target="#ai-curation-result"
+        hx-indicator="#ai-curation-spinner"
+        class="btn btn-secondary"
+        style="border-color: var(--accent); color: var(--accent);"
+    >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <path d="M12 5v14M5 12h14"/>
+        </svg>
+        Suggesties genereren
+    </button>
+
+    <div id="ai-curation-spinner" class="htmx-indicator" style="display: none; margin-top: 12px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--muted); animation: spin 1s linear infinite;">
+            <path d="M12 2a10 10 0 0110 10"/>
+        </svg>
+        <span style="font-size: 13px; color: var(--muted); margin-left: 6px;">Aan het genereren…</span>
+    </div>
+
+    <div id="ai-curation-result" style="margin-top: 16px;">
+        {% if error %}
+        <div class="ai-result-error">
+            {{ error }}
+        </div>
+        {% endif %}
+    </div>
+</div>

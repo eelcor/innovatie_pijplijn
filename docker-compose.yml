@@ -1,0 +1,60 @@
+# Innovatiepijplijn — Docker Compose configuratie
+#
+# Omgevingsvariabelen (configureerbaar via .env bestand):
+#   APP_PORT    — Poort voor de webapplicatie  (standaard: 8000)
+#   APP_HOST    — Host waarnaar uvicorn luistert (standaard: 0.0.0.0)
+#   APP_ENV     — Omgeving: development, staging, production
+#   AI_ENABLED  — AI features aan/uit
+#   MODEL_URL   — URL van het taalmodel
+#   MODEL_NAME  — Naam van het model
+#   LOG_LEVEL   — Logging level (INFO, DEBUG, ERROR)
+#   LOG_FORMAT  — Log format (console, json)
+#
+# Gebruik:
+#   docker compose up -d
+#   Of met custom poort: APP_PORT=9000 docker compose up -d
+
+services:
+  innovatiepijplijn:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: innovatiepijplijn
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    environment:
+      - APP_HOST=${APP_HOST:-0.0.0.0}
+      - APP_PORT=8000
+      - APP_ENV=${APP_ENV:-production}
+      - DATABASE_PATH=${DATABASE_PATH:-/app/data/innovatiepijplijn.db}
+      - BACKUP_DIR=${BACKUP_DIR:-/app/data/backups}
+      - MODEL_URL=${MODEL_URL:-}
+      - MODEL_NAME=${MODEL_NAME:-}
+      - MODEL_API_KEY=${MODEL_API_KEY:-}
+      - AI_ENABLED=${AI_ENABLED:-false}
+      - AI_REQUEST_TIMEOUT=${AI_REQUEST_TIMEOUT:-600}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FORMAT=${LOG_FORMAT:-json}
+    volumes:
+      # Persisteer SQLite database, uploads en backups
+      - innovatiepijplijn-data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    # Resource limits voor productie
+    deploy:
+      resources:
+        limits:
+          cpus: "${CPU_LIMIT:-2.0}"
+          memory: ${MEMORY_LIMIT:-2G}
+        reservations:
+          cpus: "${CPU_RESERVATION:-0.5}"
+          memory: ${MEMORY_RESERVATION:-512M}
+
+volumes:
+  innovatiepijplijn-data:
+    driver: local

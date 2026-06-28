@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}Tags — Innovatiepijplijn{% endblock %}
+
+{% set active_page = 'tags' %}
+
+{% block content %}
+<header class="page-header">
+  <div>
+    <h1 class="page-title">Tags</h1>
+    <p class="page-subtitle">Thema-tags voor initiatieven en centrale vragen</p>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-primary" onclick="openModal('new-tag')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+      Nieuwe tag
+    </button>
+  </div>
+</header>
+
+<!-- Tags list -->
+{% if tag_list %}
+<div class="cards-grid">
+  {% for t in tag_list %}
+  <div class="initiative-card" style="position: relative;">
+    <a href="/api/tags/{{ t.id }}" style="text-decoration: none; color: inherit; display: block;">
+      <div class="card-header">
+        <span style="display: inline-flex; align-items: center; gap: 6px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16">
+            <path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"/>
+          </svg>
+          <span class="card-title">{{ t.name }}</span>
+        </span>
+      </div>
+      {% if t.description %}
+      <p class="card-description">{{ t.description }}</p>
+      {% endif %}
+      <div style="display: flex; gap: 12px; margin-top: 8px;">
+        {% set counts = tag_counts.get(t.id, {}) %}
+        {% if counts.initiative_count > 0 %}
+        <span class="nav-badge">{{ counts.initiative_count }} initiatief{{ 'ven' if counts.initiative_count != 1 else '' }}</span>
+        {% endif %}
+        {% if counts.question_count > 0 %}
+        <span class="nav-badge">{{ counts.question_count }} vraag{{ 'n' if counts.question_count != 1 else '' }}</span>
+        {% endif %}
+      </div>
+    </a>
+    <div style="position: absolute; top: 12px; right: 12px; display: flex; gap: 4px;">
+      <button class="btn-ghost" onclick="event.preventDefault(); event.stopPropagation(); openEditTagModal('{{ t.id }}', '{{ t.name|replace("'", "\\'") }}', {{ t.description | tojson if t.description else 'null' }})" title="Bewerken">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+          <path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-state-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"/>
+    </svg>
+  </div>
+  <div class="empty-state-title">Nog geen tags</div>
+  <div class="empty-state-text">Voeg je eerste tag toe om initiatieven en vragen te categoriseren.</div>
+  <button class="btn btn-primary" onclick="openModal('new-tag')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 5v14M5 12h14"/>
+    </svg>
+    Nieuwe tag toevoegen
+  </button>
+</div>
+{% endif %}
+
+<!-- New tag modal -->
+<div class="modal-overlay" id="modal-new-tag">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">Nieuwe tag</h2>
+      <button class="modal-close" onclick="closeModal('new-tag')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <form id="form-new-tag">
+      <div class="modal-body">
+        <div class="form-field">
+          <label class="form-label form-label-required">Naam</label>
+          <input type="text" name="name" class="form-input" placeholder="Bijv. duurzaamheid, AI, participatie" required>
+          <div class="form-hint">Tag namen zijn klein-letters en uniek.</div>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Beschrijving</label>
+          <textarea name="description" class="form-textarea" placeholder="Waar gaat deze tag over? (wordt gebruikt door AI-suggesties)" style="min-height: 80px;"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('new-tag')">Annuleren</button>
+        <button type="submit" class="btn btn-primary">Tag toevoegen</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit tag modal -->
+<div class="modal-overlay" id="modal-edit-tag">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">Tag bewerken</h2>
+      <button class="modal-close" onclick="closeModal('edit-tag')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <form id="form-edit-tag">
+      <input type="hidden" name="tag_id" id="edit-tag-id">
+      <div class="modal-body">
+        <div class="form-field">
+          <label class="form-label form-label-required">Naam</label>
+          <input type="text" name="name" id="edit-tag-name" class="form-input" required>
+          <div class="form-hint">Tag namen zijn klein-letters en uniek.</div>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Beschrijving</label>
+          <textarea name="description" id="edit-tag-description" class="form-textarea" placeholder="Waar gaat deze tag over? (wordt gebruikt door AI-suggesties)" style="min-height: 80px;"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('edit-tag')">Annuleren</button>
+        <button type="submit" class="btn btn-primary">Opslaan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('form-new-tag').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const data = {};
+  formData.forEach((value, key) => { if (value) data[key] = value; });
+
+  try {
+    const result = await apiCall('/api/tags/create', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    closeModal('new-tag');
+    showToast(result.message || 'Tag toegevoegd');
+    location.reload();
+  } catch (err) {
+    console.error(err);
+  }
+});
+
+// Edit tag modal
+function openEditTagModal(tagId, name, description) {
+  document.getElementById('edit-tag-id').value = tagId;
+  document.getElementById('edit-tag-name').value = name;
+  document.getElementById('edit-tag-description').value = description || '';
+  openModal('edit-tag');
+}
+
+document.getElementById('form-edit-tag').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const tagId = formData.get('tag_id');
+  const data = {};
+  formData.forEach((value, key) => { 
+    if (key !== 'tag_id' && value) data[key] = value; 
+  });
+
+  try {
+    const result = await apiCall('/api/tags/' + tagId, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    closeModal('edit-tag');
+    showToast(result.message || 'Tag bijgewerkt');
+    location.reload();
+  } catch (err) {
+    console.error(err);
+  }
+});
+</script>
+{% endblock %}

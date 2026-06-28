@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}MDS — Innovatiepijplijn{% endblock %}
+
+{% set active_page = 'mds' %}
+
+{% block content %}
+<header class="page-header">
+  <div>
+    <h1 class="page-title">MDS</h1>
+    <p class="page-subtitle">Multidisciplinaire Samenwerking — overzicht van alle teams</p>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-primary" onclick="openModal('new-mds')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+      Nieuw team
+    </button>
+  </div>
+</header>
+
+<!-- MDS list -->
+{% if mds_list %}
+<div class="cards-grid">
+  {% for m in mds_list %}
+  <a href="/api/mds/{{ m.id }}" class="initiative-card">
+    <div class="card-header">
+      <span class="card-title">{{ m.name }}</span>
+      <span class="nav-badge">{{ mds_counts.get(m.id, 0) }} initiatieven</span>
+    </div>
+    {% if m.description %}
+    <p class="card-description">{{ m.description[:120] }}{% if m.description|length > 120 %}...{% endif %}</p>
+    {% endif %}
+    <div class="card-meta">
+      <span class="meta-text">Klik voor overzicht</span>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-state-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+      <path d="M16 3.13a4 4 0 010 7.75"/>
+    </svg>
+  </div>
+  <div class="empty-state-title">Nog geen MDS teams</div>
+  <div class="empty-state-text">Voeg je eerste multidisciplinaire team toe.</div>
+  <button class="btn btn-primary" onclick="openModal('new-mds')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 5v14M5 12h14"/>
+    </svg>
+    Nieuw team toevoegen
+  </button>
+</div>
+{% endif %}
+
+<!-- New MDS modal -->
+<div class="modal-overlay" id="modal-new-mds">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">Nieuw MDS team</h2>
+      <button class="modal-close" onclick="closeModal('new-mds')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <form id="form-new-mds">
+      <div class="modal-body">
+        <div class="form-field">
+          <label class="form-label form-label-required">Naam</label>
+          <input type="text" name="name" class="form-input" placeholder="Bijv. IT, Communicatie" required>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Beschrijving</label>
+          <textarea name="description" class="form-textarea" placeholder="Korte uitleg over dit team"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('new-mds')">Annuleren</button>
+        <button type="submit" class="btn btn-primary">Team toevoegen</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('form-new-mds').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const data = {};
+  formData.forEach((value, key) => { if (value) data[key] = value; });
+
+  try {
+    const result = await apiCall('/api/mds/create', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    closeModal('new-mds');
+    showToast(result.message || 'MDS team toegevoegd');
+    location.reload();
+  } catch (err) {
+    console.error(err);
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}{{ mds.name }} — Innovatiepijplijn{% endblock %}
+
+{% set active_page = 'mds' %}
+
+{% block content %}
+<header class="page-header">
+  <div>
+    <button onclick="window.history.back()" style="color: var(--muted); text-decoration: none; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; margin-bottom: 8px; background: none; border: none; cursor: pointer; padding: 0; font-family: inherit;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+      </svg>
+      Terug
+    </button>
+    <h1 class="page-title">{{ mds.name }}</h1>
+    {% if mds.description %}
+    <div class="markdown-body page-subtitle">{{ renderMarkdown(mds.description) | safe }}</div>
+    {% endif %}
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-secondary" onclick="openEditMDSModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+        <path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+      Bewerken
+    </button>
+  </div>
+</header>
+
+<!-- Initiatives for this MDS -->
+{% if initiatives %}
+<div class="cards-grid">
+  {% for init in initiatives %}
+  <a href="/api/initiatieven/detail/{{ init.id }}" class="initiative-card">
+    <div class="card-header">
+      <span class="card-title">{{ init.title }}</span>
+      <span class="phase-badge phase-{{ 'gestopt' if init.status == 'gestopt' else init.phase }}">{{ phaseLabel(init.phase) }}</span>
+    </div>
+    {% if init.description %}
+    <p class="card-description">{{ init.description[:120] }}{% if init.description|length > 120 %}...{% endif %}</p>
+    {% endif %}
+    <div class="card-meta">
+      <span class="status-dot status-{{ init.status }}"></span>
+      <span class="meta-text">{{ formatDate(init.updated_at.isoformat() if init.updated_at else None) }}</span>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-state-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M12 6v6l4 2"/>
+    </svg>
+  </div>
+  <div class="empty-state-title">Nog geen initiatieven</div>
+  <div class="empty-state-text">Er zijn nog geen initiatieven gekoppeld aan dit MDS team.</div>
+</div>
+{% endif %}
+
+<!-- Edit MDS modal -->
+<div class="modal-overlay" id="modal-edit-mds">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">MDS team bewerken</h2>
+      <button class="modal-close" onclick="closeModal('edit-mds')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <form id="form-edit-mds">
+      <div class="modal-body">
+        <div class="form-field">
+          <label class="form-label form-label-required">Naam</label>
+          <input type="text" name="name" class="form-input" value="{{ mds.name }}" required>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Beschrijving</label>
+          <textarea name="description" class="form-textarea">{{ mds.description or '' }}</textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('edit-mds')">Annuleren</button>
+        <button type="submit" class="btn btn-primary">Opslaan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const mdsId = '{{ mds.id }}';
+
+function openEditMDSModal() {
+  openModal('edit-mds');
+}
+
+document.getElementById('form-edit-mds').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const data = {};
+  formData.forEach((value, key) => { if (value) data[key] = value; });
+
+  try {
+    await apiCall('/api/mds/' + mdsId, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    closeModal('edit-mds');
+    showToast('MDS team bijgewerkt');
+    location.reload();
+  } catch (err) {
+    console.error(err);
+  }
+});
+</script>
+{% endblock %}

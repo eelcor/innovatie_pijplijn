@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Innovatiepijplijn — Gemeente Leiden</title>
+  <style>
+    :root {
+      --bg: oklch(99% 0.002 240);
+      --surface: oklch(100% 0 0);
+      --fg: oklch(18% 0.012 240);
+      --muted: oklch(50% 0.012 240);
+      --border: oklch(88% 0.004 240);
+      --accent: oklch(50% 0.18 25);
+      --accent-hover: oklch(45% 0.18 25);
+
+      --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+      --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+      --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--surface);
+      color: var(--fg);
+      line-height: 1.5;
+    }
+
+    /* Navigation */
+    .nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-container {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+
+    .nav-mark {
+      width: 28px;
+      height: 28px;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .nav-mark svg {
+      width: 16px;
+      height: 16px;
+      color: white;
+    }
+
+    .nav-title {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--fg);
+      letter-spacing: -0.01em;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 32px;
+    }
+
+    .nav-link {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      text-decoration: none;
+      transition: color 0.1s;
+    }
+
+    .nav-link:hover {
+      color: var(--fg);
+    }
+
+    .nav-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: var(--fg);
+      color: var(--surface);
+      font-size: 13px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: background 0.1s;
+    }
+
+    .nav-cta:hover {
+      background: oklch(28% 0.012 240);
+    }
+
+    .nav-cta svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* Hero */
+    .hero {
+      padding: 140px 24px 80px;
+      max-width: 1120px;
+      margin: 0 auto;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: start;
+    }
+
+    .hero-content {
+      padding-top: 40px;
+    }
+
+    .hero-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      margin-bottom: 16px;
+    }
+
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(32px, 4vw, 44px);
+      font-weight: 600;
+      color: var(--fg);
+      letter-spacing: -0.025em;
+      line-height: 1.15;
+      margin-bottom: 24px;
+    }
+
+    .hero-subtitle {
+      font-size: 17px;
+      color: var(--muted);
+      line-height: 1.65;
+      margin-bottom: 32px;
+      max-width: 440px;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.1s;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--fg);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg);
+    }
+
+    /* Preview */
+    .hero-preview {
+      border: 1px solid var(--border);
+      background: var(--bg);
+    }
+
+    .preview-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .preview-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--border);
+    }
+
+    .preview-dot:first-child { background: oklch(65% 0.15 25); }
+    .preview-dot:nth-child(2) { background: oklch(75% 0.12 85); }
+    .preview-dot:nth-child(3) { background: oklch(65% 0.12 145); }
+
+    .preview-content {
+      padding: 24px;
+    }
+
+    .preview-sidebar {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 24px;
+    }
+
+    .preview-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .preview-nav-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid transparent;
+    }
+
+    .preview-nav-item.active {
+      color: var(--fg);
+      border-color: var(--border);
+    }
+
+    .preview-nav-item svg {
+      width: 14px;
+      height: 14px;
+      opacity: 0.6;
+    }
+
+    .preview-main {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .preview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .preview-title-block {
+      height: 14px;
+      width: 140px;
+      background: var(--fg);
+    }
+
+    .preview-btn-block {
+      height: 28px;
+      width: 120px;
+      background: var(--accent);
+    }
+
+    .preview-cards {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .preview-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 16px;
+    }
+
+    .preview-card-badge {
+      height: 6px;
+      width: 48px;
+      background: oklch(60% 0.14 255);
+      margin-bottom: 10px;
+    }
+
+    .preview-card:nth-child(2) .preview-card-badge { background: oklch(65% 0.12 85); }
+    .preview-card:nth-child(3) .preview-card-badge { background: oklch(58% 0.12 145); }
+    .preview-card:nth-child(4) .preview-card-badge { background: var(--accent); }
+
+    .preview-card-title {
+      height: 10px;
+      width: 85%;
+      background: var(--fg);
+      margin-bottom: 8px;
+    }
+
+    .preview-card-line {
+      height: 6px;
+      background: var(--border);
+      margin-bottom: 4px;
+    }
+
+    .preview-card-line:last-child {
+      width: 60%;
+      margin-bottom: 0;
+    }
+
+    /* Section */
+    .section {
+      padding: 96px 24px;
+      max-width: 1120px;
+      margin: 0 auto;
+    }
+
+    .section-border-top {
+      border-top: 1px solid var(--border);
+    }
+
+    .section-header {
+      margin-bottom: 56px;
+    }
+
+    .section-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-family: var(--font-display);
+      font-size: clamp(24px, 3vw, 32px);
+      font-weight: 600;
+      color: var(--fg);
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+    }
+
+    .section-subtitle {
+      font-size: 16px;
+      color: var(--muted);
+      max-width: 560px;
+    }
+
+    /* Features */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+    }
+
+    .feature {
+      background: var(--surface);
+      padding: 32px;
+    }
+
+    .feature-icon {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      color: var(--fg);
+    }
+
+    .feature-icon svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    .feature-title {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--fg);
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+
+    .feature-description {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    /* Phases */
+    .phases-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+    }
+
+    .phase {
+      background: var(--surface);
+      padding: 32px 24px;
+    }
+
+    .phase-number {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    .phase-name {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--fg);
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+
+    .phase-description {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    /* Learning */
+    .learning-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 64px;
+      align-items: start;
+    }
+
+    .learning-content h2 {
+      font-family: var(--font-display);
+      font-size: clamp(24px, 3vw, 32px);
+      font-weight: 600;
+      color: var(--fg);
+      letter-spacing: -0.02em;
+      margin-bottom: 20px;
+      line-height: 1.2;
+    }
+
+    .learning-content p {
+      font-size: 15px;
+      color: var(--muted);
+      line-height: 1.65;
+      margin-bottom: 16px;
+    }
+
+    .learning-content .btn {
+      margin-top: 16px;
+    }
+
+    .learning-examples {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+    }
+
+    .learning-example {
+      background: var(--surface);
+      padding: 24px;
+    }
+
+    .learning-example-title {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--fg);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .learning-example-status {
+      width: 8px;
+      height: 8px;
+      background: oklch(60% 0.02 280);
+      border-radius: 50%;
+    }
+
+    .learning-example-text {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    /* CTA */
+    .cta-section {
+      padding: 80px 24px;
+      background: var(--fg);
+    }
+
+    .cta-container {
+      max-width: 640px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .cta-title {
+      font-family: var(--font-display);
+      font-size: clamp(24px, 3vw, 32px);
+      font-weight: 600;
+      color: var(--surface);
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+    }
+
+    .cta-subtitle {
+      font-size: 15px;
+      color: oklch(70% 0.01 240);
+      margin-bottom: 32px;
+    }
+
+    .cta-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 24px;
+      background: var(--surface);
+      color: var(--fg);
+      font-size: 14px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: background 0.1s;
+    }
+
+    .cta-btn:hover {
+      background: var(--bg);
+    }
+
+    .cta-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* Footer */
+    .footer {
+      padding: 32px 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    .footer-container {
+      max-width: 1120px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .footer-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .footer-mark {
+      width: 24px;
+      height: 24px;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .footer-mark svg {
+      width: 14px;
+      height: 14px;
+      color: white;
+    }
+
+    .footer-text {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--fg);
+    }
+
+    .footer-sub {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .hero-grid {
+        grid-template-columns: 1fr;
+        gap: 48px;
+      }
+
+      .hero-content {
+        padding-top: 0;
+      }
+
+      .features-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .phases-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .learning-grid {
+        grid-template-columns: 1fr;
+        gap: 40px;
+      }
+
+      .nav-links {
+        display: none;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .hero {
+        padding: 100px 24px 48px;
+      }
+
+      .hero-actions {
+        flex-direction: column;
+      }
+
+      .btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .preview-sidebar {
+        grid-template-columns: 1fr;
+      }
+
+      .preview-nav {
+        display: none;
+      }
+
+      .preview-cards {
+        grid-template-columns: 1fr;
+      }
+
+      .phases-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .footer-container {
+        flex-direction: column;
+        gap: 16px;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="nav">
+    <div class="nav-container">
+      <a href="index.html" class="nav-logo">
+        <div class="nav-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+            <path d="M2 17l10 5 10-5"/>
+            <path d="M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <span class="nav-title">Innovatiepijplijn</span>
+      </a>
+
+      <div class="nav-links">
+        <a href="#features" class="nav-link">Functionaliteit</a>
+        <a href="#workflow" class="nav-link">Werkwijze</a>
+        <a href="#learning" class="nav-link">Leren</a>
+      </div>
+
+      <a href="app.html" class="nav-cta">
+        Open applicatie
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </a>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-grid">
+      <div class="hero-content">
+        <div class="hero-label">Gemeente Leiden</div>
+        <h1 class="hero-title">Van idee naar impact. Zonder het overzicht te verliezen.</h1>
+        <p class="hero-subtitle">De innovatiepijplijn helpt teams om initiatieven te registreren, hypothesen te toetsen, en leeruitkomsten te behouden — ook als een experiment stopt.</p>
+        <div class="hero-actions">
+          <a href="app.html" class="btn btn-primary">
+            Start met registreren
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </a>
+          <a href="#features" class="btn btn-secondary">Bekijk functionaliteit</a>
+        </div>
+      </div>
+
+      <div class="hero-preview">
+        <div class="preview-bar">
+          <span class="preview-dot"></span>
+          <span class="preview-dot"></span>
+          <span class="preview-dot"></span>
+        </div>
+        <div class="preview-content">
+          <div class="preview-sidebar">
+            <div class="preview-nav">
+              <div class="preview-nav-item active">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="7" height="7"/>
+                  <rect x="14" y="3" width="7" height="7"/>
+                  <rect x="3" y="14" width="7" height="7"/>
+                  <rect x="14" y="14" width="7" height="7"/>
+                </svg>
+                Dashboard
+              </div>
+              <div class="preview-nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M12 6v6l4 2"/>
+                </svg>
+                Initiatieven
+              </div>
+              <div class="preview-nav-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
+                </svg>
+                Curaties
+              </div>
+            </div>
+            <div class="preview-main">
+              <div class="preview-header">
+                <div class="preview-title-block"></div>
+                <div class="preview-btn-block"></div>
+              </div>
+              <div class="preview-cards">
+                <div class="preview-card">
+                  <div class="preview-card-badge"></div>
+                  <div class="preview-card-title"></div>
+                  <div class="preview-card-line"></div>
+                  <div class="preview-card-line"></div>
+                </div>
+                <div class="preview-card">
+                  <div class="preview-card-badge"></div>
+                  <div class="preview-card-title"></div>
+                  <div class="preview-card-line"></div>
+                  <div class="preview-card-line"></div>
+                </div>
+                <div class="preview-card">
+                  <div class="preview-card-badge"></div>
+                  <div class="preview-card-title"></div>
+                  <div class="preview-card-line"></div>
+                  <div class="preview-card-line"></div>
+                </div>
+                <div class="preview-card">
+                  <div class="preview-card-badge"></div>
+                  <div class="preview-card-title"></div>
+                  <div class="preview-card-line"></div>
+                  <div class="preview-card-line"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="section section-border-top" id="features">
+    <div class="section-header">
+      <div class="section-label">Functionaliteit</div>
+      <h2 class="section-title">Alles wat je nodig hebt om innovatie te structureren</h2>
+      <p class="section-subtitle">Van eerste idee tot opgeschaald resultaat — of een waardevolle leeruitkomst.</p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 6v6l4 2"/>
+          </svg>
+        </div>
+        <h3 class="feature-title">Initiatieven registreren</h3>
+        <p class="feature-description">Leg een nieuw idee vast in minder dan twee minuten. Alleen titel en fase verplicht — de rest kan later.</p>
+      </div>
+
+      <div class="feature">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M9 11l3 3L22 4"/>
+            <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+          </svg>
+        </div>
+        <h3 class="feature-title">Hypothesen toetsen</h3>
+        <p class="feature-description">Formuleer value-, growth- en compliance-hypothesen. Koppel leeruitkomsten bij bevestiging of weerlegging.</p>
+      </div>
+
+      <div class="feature">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+            <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+          </svg>
+        </div>
+        <h3 class="feature-title">Dossier opbouwen</h3>
+        <p class="feature-description">Verzamel notities, documenten en bestanden. Alles op één plek, doorzoekbaar en raadpleegbaar.</p>
+      </div>
+
+      <div class="feature">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
+          </svg>
+        </div>
+        <h3 class="feature-title">Cureren</h3>
+        <p class="feature-description">Stel collecties samen voor show & tells, directievoorstellen of kennisdeling. Voeg context toe per item.</p>
+      </div>
+
+      <div class="feature">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="M21 21l-4.35-4.35"/>
+          </svg>
+        </div>
+        <h3 class="feature-title">Zoeken en vinden</h3>
+        <p class="feature-description">Full-text zoek over titels, hypothesen, leeruitkomsten en dossiernotities. Filter op fase, status en horizon.</p>
+      </div>
+
+      <div class="feature">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+          </svg>
+        </div>
+        <h3 class="feature-title">Dashboard</h3>
+        <p class="feature-description">Overzicht van alle initiatieven per fase, horizon en status. Zie direct wat er speelt en waar actie nodig is.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Phases -->
+  <section class="section section-border-top" id="workflow">
+    <div class="section-header">
+      <div class="section-label">Werkwijze</div>
+      <h2 class="section-title">Vier fasen van verkenning naar opschaling</h2>
+      <p class="section-subtitle">Elk initiatief doorloopt heldere fasen — of stopt met een waardevolle leeruitkomst.</p>
+    </div>
+
+    <div class="phases-grid">
+      <div class="phase">
+        <div class="phase-number">01</div>
+        <h3 class="phase-name">Verkenning</h3>
+        <p class="phase-description">Een idee onderzoeken. Wat is het probleem? Wie zijn de gebruikers? Wat zijn de eerste aannames?</p>
+      </div>
+      <div class="phase">
+        <div class="phase-number">02</div>
+        <h3 class="phase-name">Experiment</h3>
+        <p class="phase-description">Een proof of concept bouwen. Hypothesen toetsen met echte gebruikers. Leren wat werkt.</p>
+      </div>
+      <div class="phase">
+        <div class="phase-number">03</div>
+        <h3 class="phase-name">Pilot</h3>
+        <p class="phase-description">In beperkte context uitproberen. Meten, bijsturen, valideren. Klaar maken voor uitrol.</p>
+      </div>
+      <div class="phase">
+        <div class="phase-number">04</div>
+        <h3 class="phase-name">Opschaling</h3>
+        <p class="phase-description">Breder uitrollen. Van project naar reguliere werkwijze. Impact realiseren.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Learning -->
+  <section class="section section-border-top" id="learning">
+    <div class="learning-grid">
+      <div class="learning-content">
+        <h2>Stoppen is geen falen. Het is brandstof.</h2>
+        <p>Niet elk initiatief hoeft te slagen. Wat wél moet: de lessen vastleggen. Een gestopt initiatief met een heldere leeruitkomst is waardevoller dan een project dat doormoddert zonder inzicht.</p>
+        <p>In de innovatiepijplijn blijven gestopte initiatieven volledig zichtbaar en doorzoekbaar. De leeruitkomsten zijn eerste-rangs informatie — niet verstopt in een archief.</p>
+        <a href="app.html" class="btn btn-secondary">
+          Bekijk voorbeelden
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </a>
+      </div>
+      <div class="learning-examples">
+        <div class="learning-example">
+          <div class="learning-example-title">
+            <span class="learning-example-status"></span>
+            Blockchain grondzaken
+          </div>
+          <p class="learning-example-text">De technologie is nog niet volwassen genoeg voor productiegebruik. De kosten van onderhoud wegen niet op tegen de voordelen van transparantie.</p>
+        </div>
+        <div class="learning-example">
+          <div class="learning-example-title">
+            <span class="learning-example-status"></span>
+            VR-rondleidingen stadskantoor
+          </div>
+          <p class="learning-example-text">Gebruikersonderzoek toonde aan dat fysieke rondleidingen sterker scoren op toegankelijkheid en menselijk contact.</p>
+        </div>
+        <div class="learning-example">
+          <div class="learning-example-title">
+            <span class="learning-example-status"></span>
+            Chatbot eerste generatie
+          </div>
+          <p class="learning-example-text">Te weinig trainingsdata beschikbaar. Pas zinvol als we de kennisbank eerst op orde hebben. Herstart gepland voor Q3.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <div class="cta-container">
+      <h2 class="cta-title">Klaar om overzicht te krijgen?</h2>
+      <p class="cta-subtitle">Begin met het registreren van je eerste initiatief. Het kost minder dan twee minuten.</p>
+      <a href="app.html" class="cta-btn">
+        Open de applicatie
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-container">
+      <div class="footer-logo">
+        <div class="footer-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+            <path d="M2 17l10 5 10-5"/>
+            <path d="M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <span class="footer-text">Innovatiepijplijn</span>
+      </div>
+      <p class="footer-sub">Gemeente Leiden — Effectief innoveren</p>
+    </div>
+  </footer>
+</body>
+</html>

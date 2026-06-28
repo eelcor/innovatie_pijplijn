@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+
+{% block title %}{{ curation.name }} — Innovatiepijplijn{% endblock %}
+
+{% set active_page = 'curaties' %}
+
+{% block content %}
+<header class="page-header">
+  <div>
+    <button onclick="window.history.back()" style="color: var(--muted); text-decoration: none; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; margin-bottom: 8px; background: none; border: none; cursor: pointer; padding: 0; font-family: inherit;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+      </svg>
+      Terug
+    </button>
+    <h1 class="page-title">{{ curation.name }}</h1>
+    {% if curation.purpose %}
+    <p class="page-subtitle">{{ curation.purpose }}</p>
+    {% endif %}
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-secondary" onclick="generateNarratief()" style="border-color: var(--accent); color: var(--accent);">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
+        <path d="M12 2a4 4 0 014 4v2a4 4 0 01-8 0V6a4 4 0 014-4z"/>
+        <path d="M6 10v1a6 6 0 0012 0v-1"/>
+        <path d="M12 17v3"/>
+        <path d="M8 20h8"/>
+      </svg>
+      Narratief genereren
+    </button>
+    <button class="btn btn-primary" onclick="openAddItemModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+      Initiatief toevoegen
+    </button>
+  </div>
+</header>
+
+{% if curation.description %}
+<div class="markdown-body" style="margin-bottom: 32px; padding: 20px; background: var(--surface); border: 1px solid var(--border);">
+  {{ renderMarkdown(curation.description) | safe }}
+</div>
+{% endif %}
+
+<!-- AI Narratief sectie -->
+<div id="ai-narratief-section" class="ai-section" style="margin-bottom: 32px; display: none;">
+  <div class="ai-section-title">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M12 2a4 4 0 014 4v2a4 4 0 01-8 0V6a4 4 0 014-4z"/>
+      <path d="M6 10v1a6 6 0 0012 0v-1"/>
+      <path d="M12 17v3"/>
+      <path d="M8 20h8"/>
+    </svg>
+    <h3>AI-gegenereerd narratief</h3>
+  </div>
+  <div id="ai-narratief-spinner" class="ai-spinner">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 2a10 10 0 0110 10"/>
+    </svg>
+    <span>Narratief genereren…</span>
+  </div>
+  <div id="ai-narratief-content" style="margin-top: 16px;"></div>
+  <button
+    id="btn-copy-narratief"
+    class="ai-btn-copy"
+    onclick="copyNarratief()"
+    style="display: none;"
+  >
+    Kopiëren
+  </button>
+</div>
+
+<!-- AI Initiatief-suggesties sectie -->
+<div id="ai-suggest-initiatives-section" class="ai-section" style="margin-bottom: 32px;">
+  <div class="ai-section-title">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M12 2a4 4 0 014 4v2a4 4 0 01-8 0V6a4 4 0 014-4z"/>
+      <path d="M6 10v1a6 6 0 0012 0v-1"/>
+      <path d="M12 17v3"/>
+      <path d="M8 20h8"/>
+    </svg>
+    <h3>Initiatief-suggesties</h3>
+  </div>
+  <p class="ai-section-desc">
+    Laat het taalmodel initiatieven voorstellen die passen bij deze curatie.
+  </p>
+  <button
+    type="button"
+    id="btn-suggest-initiatives"
+    class="btn btn-secondary"
+    style="border-color: var(--accent); color: var(--accent);"
+  >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+      <path d="M12 5v14M5 12h14"/>
+    </svg>
+    Suggesties genereren
+  </button>
+  <div id="suggest-initiatives-spinner" class="ai-spinner">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 2a10 10 0 0110 10"/>
+    </svg>
+    <span>Aan het genereren…</span>
+  </div>
+  <div id="suggest-initiatives-result" style="margin-top: 16px;"></div>
+</div>
+
+<!-- Curation items -->
+{% if items %}
+<div class="cards-grid" id="curation-items">
+  {% for item in items %}
+  {% set initiative = initiatives_map.get(item.initiative_id) %}
+  {% if initiative %}
+  <a href="/api/initiatieven/detail/{{ initiative.id }}" class="initiative-card" data-item-id="{{ item.id }}">
+    <div class="card-header">
+      <span class="card-title">{{ initiative.title }}</span>
+      <span class="phase-badge phase-{{ 'gestopt' if initiative.status == 'gestopt' else initiative.phase }}">{{ phaseLabel(initiative.phase) }}</span>
+    </div>
+    {% if initiative.description %}
+    <p class="card-description">{{ initiative.description[:100] }}{% if initiative.description|length > 100 %}...{% endif %}</p>
+    {% endif %}
+    {% if item.note %}
+    <p class="card-description" style="border-left: 2px solid var(--accent); padding-left: 12px; margin-top: 8px;">{{ item.note }}</p>
+    {% endif %}
+    <div class="card-meta">
+      <span style="font-family: var(--font-mono); font-size: 11px; color: var(--muted);">#{{ item.position }}</span>
+      {% if initiative.horizon %}
+      <span class="horizon-badge">{{ horizonLabel(initiative.horizon) }}</span>
+      {% endif %}
+      <span class="card-meta-item">
+        <span class="status-dot status-{{ initiative.status }}"></span>
+        {{ initiative.status | capitalize }}
+      </span>
+      <span class="meta-text">{{ formatDate(initiative.updated_at.isoformat() if initiative.updated_at else None) }}</span>
+    </div>
+  </a>
+  {% endif %}
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-state-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
+    </svg>
+  </div>
+  <div class="empty-state-title">Nog geen initiatieven in deze curatie</div>
+  <div class="empty-state-text">Voeg initiatieven toe om je collectie samen te stellen.</div>
+  <button class="btn btn-primary" onclick="openAddItemModal()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 5v14M5 12h14"/>
+    </svg>
+    Initiatief toevoegen
+  </button>
+</div>
+{% endif %}
+
+<!-- Add item modal -->
+<div class="modal-overlay" id="modal-add-curation-item">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">Initiatief toevoegen aan curatie</h2>
+      <button class="modal-close" onclick="closeModal('add-curation-item')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <form id="form-add-curation-item">
+      <div class="modal-body">
+        <div class="form-field">
+          <label class="form-label form-label-required">Initiatief</label>
+          <select name="initiative_id" class="form-select" required id="curation-initiative-select">
+            <option value="">Selecteer initiatief...</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Toelichting</label>
+          <textarea name="note" class="form-textarea" placeholder="Waarom hoort dit initiatief bij deze curatie?"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('add-curation-item')">Annuleren</button>
+        <button type="submit" class="btn btn-primary">Toevoegen</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const curationId = '{{ curation.id }}';
+  const currentItemCount = {{ items|length }};
+
+  // Load initiatives for select
+  async function loadInitiatives() {
+    try {
+      const initiatives = await apiCall('/api/initiatieven/json');
+      const select = document.getElementById('curation-initiative-select');
+      initiatives.forEach(i => {
+        const option = document.createElement('option');
+        option.value = i.id;
+        option.textContent = i.title;
+        select.appendChild(option);
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  function openAddItemModal() {
+    openModal('add-curation-item');
+    loadInitiatives();
+  }
+
+  document.getElementById('form-add-curation-item').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = {};
+    formData.forEach((value, key) => { if (value && key !== 'initiative_id') data[key] = value; });
+    data.initiative_id = formData.get('initiative_id');
+    data.position = currentItemCount + 1;
+
+    try {
+      await apiCall('/api/curaties/' + curationId + '/items/add', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      closeModal('add-curation-item');
+      showToast('Initiatief toegevoegd aan curatie');
+      location.reload();
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+  // --- AI: Narratief genereren ---
+
+  let currentNarratief = '';
+
+  async function generateNarratief() {
+    const section = document.getElementById('ai-narratief-section');
+    const spinner = document.getElementById('ai-narratief-spinner');
+    const content = document.getElementById('ai-narratief-content');
+    const copyBtn = document.getElementById('btn-copy-narratief');
+
+    section.style.display = '';
+    spinner.classList.add('active');
+    content.innerHTML = '';
+    copyBtn.style.display = 'none';
+
+    try {
+      const data = await apiCall('/api/ai/curaties/' + curationId + '/narratief', {
+        method: 'POST',
+      });
+      spinner.classList.remove('active');
+
+      if (!data.success) {
+        content.innerHTML = `<div class="ai-result-error">${data.error || 'Er ging iets mis.'}</div>`;
+        return;
+      }
+
+      currentNarratief = data.narrative || '';
+      // Render met markdown support
+      content.innerHTML = `<div class="ai-result-content">${renderMarkdown(currentNarratief)}</div>`;
+      copyBtn.style.display = '';
+    } catch (err) {
+      spinner.classList.remove('active');
+      content.innerHTML = `<div class="ai-result-error">Fout: ${err.message || err}</div>`;
+    }
+  }
+
+  function copyNarratief() {
+    navigator.clipboard.writeText(currentNarratief);
+    showToast('Narratief gekopieerd!');
+  }
+
+  // --- AI: Initiatief-suggesties ---
+
+  document.getElementById('btn-suggest-initiatives').addEventListener('click', async () => {
+    const spinner = document.getElementById('suggest-initiatives-spinner');
+    const result = document.getElementById('suggest-initiatives-result');
+    spinner.classList.add('active');
+    result.innerHTML = '';
+
+    try {
+      const data = await apiCall('/api/ai/curaties/' + curationId + '/suggest-initiatives', {
+        method: 'POST',
+      });
+      spinner.classList.remove('active');
+
+      if (!data.success) {
+        result.innerHTML = `<div class="ai-result-error">${data.error || 'Er ging iets mis.'}</div>`;
+        return;
+      }
+
+      if (!data.suggestions || !data.suggestions.length) {
+        result.innerHTML = '<div style="font-size: 13px; color: var(--muted);">Geen passende initiatieven gevonden.</div>';
+        return;
+      }
+
+      let html = '<div style="display: flex; flex-direction: column; gap: 1px; background: var(--border); border: 1px solid var(--border);">';
+      data.suggestions.forEach((s, idx) => {
+        const titleEscaped = (s.title || '').replace(/'/g, "\\'");
+        html += `
+          <div class="ai-suggestion-item">
+            <div class="ai-suggestion-header">
+              <div style="flex: 1;">
+                <p class="ai-suggestion-desc">${s.title || ''}</p>
+                ${s.rationale ? `<p class="ai-suggestion-rationale">${renderMarkdownInline(s.rationale)}</p>` : ''}
+              </div>
+              <button
+                class="ai-btn-accept"
+                onclick="addSuggestedInitiative('${s.initiative_id || ''}', this)"
+              >
+                Toevoegen
+              </button>
+            </div>
+          </div>`;
+      });
+      html += '</div>';
+      result.innerHTML = html;
+    } catch (err) {
+      spinner.classList.remove('active');
+      result.innerHTML = `<div class="ai-result-error">Fout: ${err.message || err}</div>`;
+    }
+  });
+
+  async function addSuggestedInitiative(initiativeId, btn) {
+    if (!initiativeId) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Toevoegen…';
+
+    try {
+      // Bepaal de volgende positie
+      const nextPosition = currentItemCount + 1;
+
+      await apiCall('/api/curaties/' + curationId + '/items/add', {
+        method: 'POST',
+        body: JSON.stringify({
+          initiative_id: initiativeId,
+          position: nextPosition,
+        }),
+      });
+
+      btn.classList.add('accepted');
+      btn.textContent = '✓ Toegevoegd';
+      showToast('Initiatief toegevoegd aan curatie');
+    } catch (err) {
+      console.error(err);
+      btn.disabled = false;
+      btn.textContent = 'Toevoegen';
+    }
+  }
+</script>
+{% endblock %}

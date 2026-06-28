@@ -1,0 +1,308 @@
+# Innovatiepijplijn — IT Operations Handleiding
+
+## Sneloverzicht
+
+| Onderwerp | Detail |
+|-----------|--------|
+| **Tech stack** | Python 3.11, FastAPI, SQLite, HTMX |
+| **Default poort** | `8000` |
+| **Database** | SQLite (WAL mode) in `/app/data/innovatiepijplijn.db` |
+| **Health check** | `GET /health` → HTTP 200 + JSON |
+| **Admin API** | `GET /api/admin/status`, `GET /api/admin/config` |
+| **Backups** | `POST /api/admin/backup` |
+
+---
+
+## Installatie & Configuratie
+
+### 1. Omgevingsvariabelen instellen
+
+```bash
+# Kopieer het voorbeeld en pas aan
+cp .env.example .env
+
+# Minimale configuratie:
+APP_PORT=8000
+MODEL_URL=http://taalmodel.local:8033   # AI model URL
+MODEL_NAME=Qwen3.6-27B-UD-Q4_K_XL.gguf  # Model naam
+AI_ENABLED=true                          # Zet op false als geen AI nodig
+```
+
+Volledige lijst van variabelen: zie `.env.example`.
+
+### 2. Docker (aanbevolen voor productie)
+
+```bash
+# Start de applicatie
+docker compose up -d --build
+
+# Check of alles draait
+docker compose ps
+
+# Bekijk logs
+docker compose logs -f innovatiepijplijn
+```
+
+### 3. Lokaal (ontwikkeling)
+
+```bash
+# Virtual environment
+python -m venv .venv
+source .venv/bin/activate
+pip install uv && uv sync --frozen
+
+# Start
+APP_PORT=8000 python -m uvicorn app.main:app --reload --host 0.0.0.0
+```
+
+---
+
+## Monitoring
+
+### Health Check
+
+```bash
+# Snel check
+curl http://localhost:8000/health
+
+# Gedetailleerd output
+curl http://localhost:8000/health | python -m json.tool
+```
+
+Voorbeeld respons:
+```json
+{
+  "status": "healthy",
+  "timestamp": "2025-01-01T12:00:00Z",
+  "components": {
+    "database": {"status": "healthy"},
+    "ai": {"status": "enabled (Qwen3.6-27B-UD-Q4_K_XL.gguf)"},
+    "uploads": {"status": "healthy", "path": "/app/data/uploads"}
+  }
+}
+```
+
+### Applicatiestatus
+
+```bash
+# Overzicht van entiteiten en database-grootte
+curl http://localhost:8000/api/admin/status | python -m json.tool
+
+# Huidige configuratie (zonder secrets)
+curl http://localhost:8000/api/admin/config | python -m json.tool
+```
+
+### Logging
+
+**Console mode** (standaard, leesbaar):
+```
+[2025-01-01 12:00:00] INFO     app.main: Innovatiepijplijn start-up
+[2025-01-01 12:00:00] INFO     app.main: Database: /app/data/innovatiepijplijn.db
+```
+
+**JSON mode** (voor log-aggregators):
+```bash
+# Zet in .env:
+LOG_FORMAT=json
+LOG_LEVEL=DEBUG
+
+# Logs zijn nu machine-readable JSON per regel
+{"timestamp": "2025-...", "level": "INFO", "logger": "app.main", "message": "..."}
+```
+
+---
+
+## Backups
+
+### Database backup maken
+
+```bash
+# Via API triggeren
+curl -X POST http://localhost:8000/api/admin/backup | python -m json.tool
+```
+
+Voorbeeld respons:
+```json
+{
+  "success": true,
+  "database_backup": "/app/data/backups/innovatiepijplijn_db_20250101_120000.db",
+  "uploads_backup": "/app/data/backups/innovatiepijplijn_uploads_20250101_120000.zip"
+}
+```
+
+### Beschikbare backups bekijken
+
+```bash
+curl http://localhost:8000/api/admin/backups | python -m json.tool
+```
+
+### Backup verwijderen
+
+```bash
+curl -X DELETE "http://localhost:8000/api/admin/backups/innovatiepijplijn_db_20250101_120000.db"
+```
+
+> **Let op:** Er worden maximaal 10 database backups automatisch bewaard. Oudere backups worden verwijderd bij een nieuwe backup.
+
+### Automatische backups (cron)
+
+```bash
+# Voeg toe aan crontab: crontab -e
+# Dagelijks om 02:00 uur
+0 2 * * * curl -X POST http://localhost:8000/api/admin/backup >> /var/log/innovatiepijplijn-backup.log 2>&1
+
+# Of direct SQLite backup (zonder API):
+0 2 * * * sqlite3 /app/data/innovatiepijplijn.db ".backup /app/data/backups/innovatiepijplijn_db_$(date +\%Y\%m\%d_\%H\%M\%S).db"
+```
+
+### Backup handmatig kopiëren (Docker)
+
+```bash
+# Database bestand downloaden uit container
+docker compose cp innovatiepijplijn:/app/data/innovatiepijplijn.db ./backup.db
+
+# Backups downloaden
+docker compose cp innovatiepijplijn:/app/data/backups/ ./backups/
+```
+
+---
+
+## Database beheer
+
+### SQLite database inspecteren
+
+```bash
+# Verbinden met de database (Docker)
+docker compose exec innovatiepijplijn sqlite3 /app/data/innovatiepijplijn.db
+
+# Tabeloverzicht
+.tables
+
+# Aantal initiatieven
+SELECT COUNT(*) FROM initiatives;
+
+# Database grootte
+SELECT page_count * page_size as size_bytes FROM pragma_page_count(), pragma_page_size();
+```
+
+### Database optimaliseren
+
+```bash
+# VACUUM — herpak de database (doe dit tijdens onderhoudsvenster)
+docker compose exec innovatiepijplijn sqlite3 /app/data/innovatiepijplijn.db "VACUUM;"
+
+# ANALYZE — update query planner statistics
+docker compose exec innovatiepijplijn sqlite3 /app/data/innovatiepijplijn.db "ANALYZE;"
+```
+
+---
+
+## AI Configuratie
+
+### Model aansluiten
+
+Het systeem ondersteunt elk model met een **OpenAI-compatible** `/v1/chat/completions` endpoint:
+
+| Provider | MODEL_URL | MODEL_NAME |
+|----------|-----------|------------|
+| LM Studio | `http://localhost:8033` | zie models list |
+| Ollama | `http://localhost:11434` | modelnaam |
+| vLLM | `http://server:8000` | modelnaam |
+| OpenAI | `https://api.openai.com/v1` | gpt-4o |
+
+### AI testen zonder model
+
+```bash
+# Zet AI uit in .env
+AI_ENABLED=false
+
+# App start normaal, AI features tonen "AI is uitgeschakeld"
+```
+
+### Timeout aanpassen (voor grote modellen)
+
+```bash
+# Standaard 600s — verhoog bij zeer grote modellen
+AI_REQUEST_TIMEOUT=900
+```
+
+---
+
+## Upgrades
+
+### Nieuwe versie installeren
+
+```bash
+# Git pull naar nieuwste commit
+git pull origin main
+
+# Dependencies updaten (indien nodig)
+source .venv/bin/activate && uv sync --frozen
+
+# Docker rebuilden (indien Docker gebruikt)
+docker compose up -d --build
+
+# Check of alles draait
+curl http://localhost:8000/health
+```
+
+### Database schema wijzigingen
+
+Het systeem gebruikt `create_all()` voor automatische tabel-creatie. Voor expliciete migraties kan Alembic worden toegevoegd bij toekomstige versies.
+
+---
+
+## Troubleshooting
+
+### App start niet
+
+```bash
+# Check logs
+docker compose logs innovatiepijplijn
+
+# Check poort conflict
+lsof -i :8000
+```
+
+### Database fouten
+
+```bash
+# Check database integriteit
+docker compose exec innovatiepijplijn sqlite3 /app/data/innovatiepijplijn.db "PRAGMA integrity_check;"
+
+# Herstel van backup
+cp /app/data/backups/innovatiepijplijn_db_LATEST.db /app/data/innovatiepijplijn.db
+```
+
+### AI timeouts
+
+```bash
+# Verhoog timeout in .env
+AI_REQUEST_TIMEOUT=900
+
+# Of verlaag max_tokens (minder creatief maar sneller)
+# Zie app/routes/ai.py — temperature en max_tokens per endpoint
+```
+
+### Logs niet zichtbaar
+
+```bash
+# Docker logs bekijken
+docker compose logs -f innovatiepijplijn
+
+# Log level verlagen voor meer detail
+LOG_LEVEL=DEBUG
+```
+
+---
+
+## Resource-gebruik
+
+| Component | Minimum | Aanbevolen |
+|-----------|---------|------------|
+| CPU | 1 core | 2 cores |
+| RAM | 512 MB | 1 GB |
+| Disk (app) | 100 MB | 500 MB |
+| Disk (data) | 10 MB | 1 GB (met backups/uploads) |
+
+> **Let op:** Het AI-model draait apart en heeft eigen resources nodig (afhankelijk van modelgrootte).

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Curaties — Innovatiepijplijn{% endblock %}
+
+{% set active_page = 'curaties' %}
+
+{% block content %}
+<header class="page-header">
+  <div>
+    <h1 class="page-title">Curaties</h1>
+    <p class="page-subtitle">Samengestelde collecties van initiatieven</p>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-primary" onclick="openModal('new-curation')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+      Nieuwe curatie
+    </button>
+  </div>
+</header>
+
+{% if curations %}
+<div class="curation-grid">
+  {% for curation in curations %}
+  <a href="/api/curaties/detail/{{ curation.id }}" class="curation-card">
+    <h3 class="curation-title">{{ curation.name }}</h3>
+    {% if curation.description %}
+    <p class="curation-description">{{ curation.description[:120] }}{% if curation.description|length > 120 %}...{% endif %}</p>
+    {% endif %}
+    <div class="curation-meta">
+      <span>{{ curation.items|length }} initiatieven</span>
+      <span>•</span>
+      <span>{{ formatDate(curation.updated_at.isoformat() if curation.updated_at else None) }}</span>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-state-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
+    </svg>
+  </div>
+  <div class="empty-state-title">Nog geen curaties</div>
+  <div class="empty-state-text">Stel een collectie samen van initiatieven voor een specifiek doel.</div>
+  <button class="btn btn-primary" onclick="openModal('new-curation')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 5v14M5 12h14"/>
+    </svg>
+    Nieuwe curatie
+  </button>
+</div>
+{% endif %}
+{% endblock %}

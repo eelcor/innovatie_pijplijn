@@ -1,0 +1,39 @@
+# Python
+__pycache__
+*.pyc
+*.pyo
+.venv
+.pytest_cache
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test files (not needed in production)
+tests/
+
+# Documentation
+PRD.md
+PLAN.md
+
+# Design files
+Design files/
+
+# Local data (will be created in container)
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/uploads/*
+
+# Environment
+.env

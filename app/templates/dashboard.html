@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — Innovatiepijplijn{% endblock %}
+
+{% set active_page = 'dashboard' %}
+
+{% block content %}
+<header class="page-header">
+  <div>
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-subtitle">Overzicht van alle innovatie-initiatieven</p>
+  </div>
+  <div class="header-actions">
+    <a href="/api/initiatieven/lijst" class="btn btn-secondary">
+      Alle initiatieven bekijken
+    </a>
+    <button class="btn btn-primary" onclick="openModal('new-initiative')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+      Nieuw initiatief
+    </button>
+  </div>
+</header>
+
+<!-- Stats -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-label">Totaal initiatieven</div>
+    <div class="stat-value">{{ total_initiatives }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Actief</div>
+    <div class="stat-value">{{ status_counts.get('actief', 0) }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Gestopt (met leeruitkomst)</div>
+    <div class="stat-value">{{ status_counts.get('gestopt', 0) }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Hypothesen getoetst</div>
+    <div class="stat-value">{{ tested_count }}</div>
+  </div>
+</div>
+
+{% if without_question > 0 %}
+<a href="/api/initiatieven/lijst?no_central_question=1" style="text-decoration: none; color: inherit;">
+<div style="margin-bottom: 24px; padding: 16px 20px; background: oklch(97% 0.03 85); border: 1px solid oklch(90% 0.04 85); display: flex; align-items: center; gap: 12px; cursor: pointer; transition: all 0.1s;">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20" style="color: var(--warning); flex-shrink: 0;">
+    <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+    <path d="M12 9v4M12 17h.01"/>
+  </svg>
+  <div>
+    <span style="font-size: 13px; font-weight: 600; color: var(--warning);">{{ without_question }} initiatieven zonder centrale vraag</span>
+    <span style="font-size: 12px; color: var(--muted); margin-left: 8px;">Klik om ze te bekijken en koppel een centrale vraag voor beter overzicht.</span>
+  </div>
+</div>
+</a>
+{% endif %}
+
+<!-- Phase distribution -->
+<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); margin-bottom: 32px;">
+  {% for phase in ['verkenning', 'experiment', 'pilot', 'opschaling'] %}
+  <div style="background: var(--surface); padding: 16px 20px;">
+    <span class="phase-badge phase-{{ phase }}">{{ phaseLabel(phase) }}</span>
+    <div style="font-size: 20px; font-weight: 600; margin-top: 8px; font-family: var(--font-display);">
+      {{ phase_counts.get(phase, 0) }}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Laatste 10 initiatieven -->
+<h2 style="font-size: 14px; font-weight: 600; color: var(--fg); margin-bottom: 16px;">Laatste ingevoerde initiatieven</h2>
+{% if recent %}
+<table class="data-table">
+  <thead>
+    <tr>
+      <th>Initiatief</th>
+      <th>Fase</th>
+      <th>Status</th>
+      <th>Horizon</th>
+      <th>Ingevoerd</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for initiative in recent[:10] %}
+    <tr>
+      <td>
+        <a href="/api/initiatieven/detail/{{ initiative.id }}" class="initiative-name">{{ initiative.title }}</a>
+        {% if initiative.description %}
+        <div class="initiative-desc">{{ initiative.description[:80] }}{% if initiative.description|length > 80 %}...{% endif %}</div>
+        {% endif %}
+      </td>
+      <td><span class="phase-badge phase-{{ 'gestopt' if initiative.status == 'gestopt' else initiative.phase }}">{{ phaseLabel(initiative.phase) }}</span></td>
+      <td><span class="status-dot status-{{ initiative.status }}"></span></td>
+      <td>{% if initiative.horizon %}<span class="horizon-badge">{{ horizonLabel(initiative.horizon) }}</span>{% else %}<span class="meta-text">-</span>{% endif %}</td>
+      <td><span class="meta-text">{{ formatDate(initiative.created_at.isoformat() if initiative.created_at else None) }}</span></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty-state" style="padding: 40px;">
+  <div class="empty-state-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M12 6v6l4 2"/>
+    </svg>
+  </div>
+  <div class="empty-state-title">Nog geen initiatieven</div>
+  <div class="empty-state-text">Begin met het registreren van je eerste initiatief.</div>
+  <button class="btn btn-primary" onclick="openModal('new-initiative')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 5v14M5 12h14"/>
+    </svg>
+    Nieuw initiatief
+  </button>
+</div>
+{% endif %}
+
+<!-- Recent gestopt -->
+{% if recent_stopped %}
+<div style="margin-top: 32px;">
+  <h2 style="font-size: 14px; font-weight: 600; color: var(--fg); margin-bottom: 12px;">Recent gestopt met leeruitkomst</h2>
+  <div class="cards-grid">
+    {% for item in recent_stopped %}
+    <a href="/api/initiatieven/detail/{{ item.id }}" class="initiative-card">
+      <div class="card-header">
+        <span class="card-title">{{ item.title }}</span>
+        <span class="phase-badge phase-gestopt">Gestopt</span>
+      </div>
+      {% if item.stop_reason %}
+      <p class="card-description">{{ item.stop_reason[:120] }}{% if item.stop_reason|length > 120 %}...{% endif %}</p>
+      {% endif %}
+      <div class="card-meta">
+        <span class="meta-text">{{ formatDate(item.updated_at.isoformat() if item.updated_at else None) }}</span>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

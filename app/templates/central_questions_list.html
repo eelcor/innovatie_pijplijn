@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Centrale vragen — Innovatiepijplijn{% endblock %}
+
+{% set active_page = 'vragen' %}
+
+{% block content %}
+<header class="page-header">
+  <div>
+    <h1 class="page-title">Centrale vragen</h1>
+    <p class="page-subtitle">De raketpunt-vragen waaraan initiatieven hangen</p>
+  </div>
+  <div class="header-actions">
+    {% if without_question > 0 %}
+    <span style="font-size: 13px; color: var(--warning); font-weight: 500;">
+      ⚠ {{ without_question }} initiatieven zonder vraag
+    </span>
+    {% endif %}
+    <button class="btn btn-primary" onclick="openModal('new-question')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+      Nieuwe vraag
+    </button>
+  </div>
+</header>
+
+<!-- Questions list -->
+{% if questions %}
+<div class="cards-grid" style="grid-template-columns: 1fr;">
+  {% for q in questions %}
+  <a href="/api/vragen/{{ q.id }}" class="initiative-card" style="display: flex; align-items: flex-start; justify-content: space-between; padding: 20px 24px;">
+    <div style="flex: 1; min-width: 0;">
+      <div class="card-title">{{ q.question }}</div>
+      {% if q.description %}
+      <p class="card-description" style="margin-top: 6px;">{{ q.description[:150] }}{% if q.description|length > 150 %}...{% endif %}</p>
+      {% endif %}
+      {% if question_tags.get(q.id) %}
+      <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px;">
+        {% for tag in question_tags.get(q.id, []) %}
+        <a href="/api/tags/{{ tag.id }}" style="display: inline-flex; align-items: center; gap: 3px; padding: 2px 6px; background: var(--bg); border: 1px solid var(--border); font-size: 11px; color: var(--muted); text-decoration: none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="10" height="10">
+            <path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"/>
+          </svg>
+          {{ tag.name }}
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px; margin-left: 16px;">
+      <span class="nav-badge">{{ question_counts.get(q.id, 0) }} initiatieven</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="color: var(--muted);">
+        <path d="M9 18l6-6-6-6"/>
+      </svg>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-state-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/>
+      <path d="M12 17h.01"/>
+    </svg>
+  </div>
+  <div class="empty-state-title">Nog geen centrale vragen</div>
+  <div class="empty-state-text">Voeg je eerste centrale vraag toe.</div>
+  <button class="btn btn-primary" onclick="openModal('new-question')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 5v14M5 12h14"/>
+    </svg>
+    Nieuwe vraag toevoegen
+  </button>
+</div>
+{% endif %}
+
+<!-- New question modal -->
+<div class="modal-overlay" id="modal-new-question">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">Nieuwe centrale vraag</h2>
+      <button class="modal-close" onclick="closeModal('new-question')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <form id="form-new-question">
+      <div class="modal-body">
+        <div class="form-field">
+          <label class="form-label form-label-required">Vraagstelling</label>
+          <textarea name="question" class="form-textarea" placeholder="Formuleer de centrale vraag..." required style="min-height: 80px;"></textarea>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Tags</label>
+          <select id="new-question-tag-select" class="form-select" multiple style="min-height: 80px;">
+            {% for t in all_tags %}
+            <option value="{{ t.id }}">{{ t.name }}</option>
+            {% endfor %}
+          </select>
+          <div class="form-hint">Houd Cmd (Mac) of Ctrl (Windows) ingedrukt om meerdere tags te selecteren.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('new-question')">Annuleren</button>
+        <button type="submit" class="btn btn-primary">Vraag toevoegen</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('form-new-question').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const data = {};
+  formData.forEach((value, key) => {
+    if (key !== 'tag_ids' && value) data[key] = value;
+  });
+
+  // Handle multi-select tag_ids separately
+  const tagSelect = document.getElementById('new-question-tag-select');
+  if (tagSelect) {
+    const selectedTags = Array.from(tagSelect.selectedOptions).map(o => o.value);
+    data['tag_ids'] = selectedTags;
+  }
+
+  try {
+    const result = await apiCall('/api/vragen/create', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    closeModal('new-question');
+    showToast(result.message || 'Centrale vraag toegevoegd');
+    location.reload();
+  } catch (err) {
+    console.error(err);
+  }
+});
+</script>
+{% endblock %}

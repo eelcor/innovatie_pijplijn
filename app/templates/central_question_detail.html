@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+
+{% block title %}{{ question.question }} — Innovatiepijplijn{% endblock %}
+
+{% set active_page = 'vragen' %}
+
+{% block content %}
+<header class="page-header">
+  <div>
+    <button onclick="window.history.back()" style="color: var(--muted); text-decoration: none; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; margin-bottom: 8px; background: none; border: none; cursor: pointer; padding: 0; font-family: inherit;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+      </svg>
+      Terug
+    </button>
+    <h1 class="page-title">{{ question.question }}</h1>
+    <p class="page-subtitle">Centrale vraag • {{ initiatives|length }} initiatieven</p>
+    {% if tags %}
+    <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
+      {% for tag in tags %}
+      <a href="/api/tags/{{ tag.id }}" style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; background: var(--bg); border: 1px solid var(--border); font-size: 12px; color: var(--muted); text-decoration: none; cursor: pointer;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12">
+          <path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"/>
+        </svg>
+        {{ tag.name }}
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-secondary" onclick="openEditQuestionModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+        <path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+      Bewerken
+    </button>
+  </div>
+</header>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab active" data-tab="initiatives">Initiatieven</button>
+  <button class="tab" data-tab="files">Bestanden ({{ files|length }})</button>
+</div>
+
+<!-- Initiatives tab -->
+<div class="tab-content" id="tab-initiatives">
+  {% if initiatives %}
+  <div class="cards-grid">
+    {% for init in initiatives %}
+    <a href="/api/initiatieven/detail/{{ init.id }}" class="initiative-card">
+      <div class="card-header">
+        <span class="card-title">{{ init.title }}</span>
+        <span class="phase-badge phase-{{ 'gestopt' if init.status == 'gestopt' else init.phase }}">{{ phaseLabel(init.phase) }}</span>
+      </div>
+      {% if init.description %}
+      <p class="card-description">{{ init.description[:120] }}{% if init.description|length > 120 %}...{% endif %}</p>
+      {% endif %}
+      <div class="card-meta">
+        <span class="status-dot status-{{ init.status }}"></span>
+        <span class="meta-text">{{ formatDate(init.updated_at.isoformat() if init.updated_at else None) }}</span>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M12 6v6l4 2"/>
+      </svg>
+    </div>
+    <div class="empty-state-title">Nog geen initiatieven</div>
+    <div class="empty-state-text">Er zijn nog geen initiatieven gekoppeld aan deze centrale vraag.</div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Files tab -->
+<div class="tab-content" id="tab-files" style="display: none;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <span style="font-size: 13px; color: var(--muted);">Bestanden bij deze vraag</span>
+    <button class="btn btn-secondary" onclick="openUploadModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+      Bestand uploaden
+    </button>
+  </div>
+
+  {% if files %}
+  <div class="dossier-list">
+    {% for f in files %}
+    <div class="dossier-item">
+      <div class="dossier-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <path d="M14 2v6h6"/>
+        </svg>
+      </div>
+      <div class="dossier-info">
+        <div class="dossier-name"><a href="/api/vragen/{{ question.id }}/files/download/{{ f.id }}" style="color: var(--fg); text-decoration: none;">{{ f.filename }}</a></div>
+        <div class="dossier-meta">{{ formatFileSize(f.file_size) }} • {{ formatDate(f.uploaded_at.isoformat() if f.uploaded_at else None) }}</div>
+      </div>
+      <button onclick="removeFile('{{ f.id }}')" style="background: none; border: none; cursor: pointer; color: var(--muted); padding: 4px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div style="text-align: center; padding: 32px; color: var(--muted); font-size: 13px;">Nog geen bestanden.</div>
+  {% endif %}
+</div>
+
+<!-- Edit question modal -->
+<div class="modal-overlay" id="modal-edit-question">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">Centrale vraag bewerken</h2>
+      <button class="modal-close" onclick="closeModal('edit-question')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <form id="form-edit-question">
+      <div class="modal-body">
+        <div class="form-field">
+          <label class="form-label form-label-required">Vraagstelling</label>
+          <textarea name="question" class="form-textarea" required style="min-height: 80px;">{{ question.question }}</textarea>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Toelichting</label>
+          <textarea name="description" class="form-textarea" placeholder="Uitleg over deze vraag (markdown ondersteund)" style="min-height: 100px;">{{ question.description or '' }}</textarea>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Tags</label>
+          <select name="tag_ids" id="edit-question-tag-select" class="form-select" multiple style="min-height: 100px;">
+            {% for t in all_tags %}
+            <option value="{{ t.id }}" {% if t.id in question_tag_ids %}selected{% endif %}>{{ t.name }}</option>
+            {% endfor %}
+          </select>
+          <div class="form-hint">Houd Cmd (Mac) of Ctrl (Windows) ingedrukt om meerdere tags te selecteren.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('edit-question')">Annuleren</button>
+        <button type="submit" class="btn btn-primary">Opslaan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Upload modal -->
+<div class="modal-overlay" id="modal-upload-file">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">Bestand uploaden</h2>
+      <button class="modal-close" onclick="closeModal('upload-file')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <form id="form-upload-file">
+      <div class="modal-body">
+        <div class="form-field">
+          <label class="form-label form-label-required">Bestand</label>
+          <input type="file" name="file" class="form-input" required style="padding: 8px;">
+          <div class="form-hint">Maximum bestandsgrootte: 25 MB</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('upload-file')">Annuleren</button>
+        <button type="submit" class="btn btn-primary">Uploaden</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const questionId = '{{ question.id }}';
+
+// Tab switching
+document.querySelectorAll('.tab[data-tab]').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).style.display = '';
+  });
+});
+
+function openEditQuestionModal() {
+  openModal('edit-question');
+}
+
+document.getElementById('form-edit-question').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const data = {};
+  formData.forEach((value, key) => {
+    if (key !== 'tag_ids' && value) data[key] = value;
+  });
+
+  // Handle multi-select tag_ids separately
+  const tagSelect = document.getElementById('edit-question-tag-select');
+  if (tagSelect) {
+    const selectedTags = Array.from(tagSelect.selectedOptions).map(o => o.value);
+    data['tag_ids'] = selectedTags;
+  }
+
+  try {
+    await apiCall('/api/vragen/' + questionId, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    closeModal('edit-question');
+    showToast('Centrale vraag bijgewerkt');
+    location.reload();
+  } catch (err) {
+    console.error(err);
+  }
+});
+
+// File upload
+function openUploadModal() {
+  openModal('upload-file');
+}
+
+document.getElementById('form-upload-file').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+
+  try {
+    await fetch('/api/vragen/' + questionId + '/files/upload', {
+      method: 'POST',
+      body: formData,
+    });
+    closeModal('upload-file');
+    showToast('Bestand geüpload');
+    location.reload();
+  } catch (err) {
+    console.error(err);
+  }
+});
+
+async function removeFile(fileId) {
+  if (!confirm('Dit bestand verwijderen?')) return;
+  try {
+    await apiCall('/api/vragen/' + questionId + '/files/' + fileId, {
+      method: 'DELETE',
+    });
+    showToast('Bestand verwijderd');
+    location.reload();
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function formatDate(isoString) {
+  if (!isoString) return '-';
+  const d = new Date(isoString);
+  return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+</script>
+{% endblock %}

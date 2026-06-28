@@ -1,0 +1,1761 @@
+{% extends "base.html" %}
+
+{% block title %}{{ initiative.title }} — Innovatiepijplijn{% endblock %}
+
+{% set active_page = 'initiatieven' %}
+
+{% block content %}
+<header class="page-header">
+  <div>
+    <button onclick="window.history.back()" style="color: var(--muted); text-decoration: none; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; margin-bottom: 8px; background: none; border: none; cursor: pointer; padding: 0; font-family: inherit;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+      </svg>
+      Terug
+    </button>
+    <h1 class="page-title">{{ initiative.title }}</h1>
+    <p class="page-subtitle">Initiatiefdetail</p>
+  </div>
+  <div class="header-actions">
+    {% if initiative.status != 'gestopt' %}
+    <button class="btn btn-secondary" onclick="openStopModal('{{ initiative.id }}')" style="border-color: var(--stopped); color: var(--stopped);">
+      Stoppen
+    </button>
+    {% endif %}
+    <button class="btn btn-primary" onclick="openEditModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+        <path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+      Bewerken
+    </button>
+  </div>
+</header>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab active" data-tab="overview">Overzicht</button>
+  <button class="tab" data-tab="hypotheses">Hypothesen</button>
+  <button class="tab" data-tab="dossier">Dossier</button>
+  <button class="tab" data-tab="ai">AI-assistent</button>
+</div>
+
+<!-- Overview tab -->
+<div class="tab-content" id="tab-overview">
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+    <div>
+      {% if initiative.description %}
+      <div class="detail-field" style="margin-bottom: 20px;">
+        <div class="detail-label">Beschrijving</div>
+        {{ renderMarkdown(initiative.description) | safe }}
+      </div>
+      {% endif %}
+
+      <div class="detail-field">
+        <div class="detail-label">Fase & Status</div>
+        <div style="display: flex; gap: 8px; margin-top: 4px;">
+          <span class="phase-badge phase-{{ 'gestopt' if initiative.status == 'gestopt' else initiative.phase }}">{{ phaseLabel(initiative.phase) }}</span>
+          {% if initiative.horizon %}
+          <span class="horizon-badge">{{ horizonLabel(initiative.horizon) }}</span>
+          {% endif %}
+        </div>
+      </div>
+
+      {% if initiative.trekker %}
+      <div class="detail-field">
+        <div class="detail-label">Trekker</div>
+        <div class="detail-value">{{ initiative.trekker }}</div>
+      </div>
+      {% endif %}
+
+      {% if initiative.owner %}
+      <div class="detail-field">
+        <div class="detail-label">Eigenaar / team</div>
+        <div class="detail-value">{{ initiative.owner }}</div>
+      </div>
+      {% endif %}
+
+      {% if initiative.type_ai_gebruik %}
+      <div class="detail-field">
+        <div class="detail-label">Type AI-gebruik</div>
+        <span class="type-ai-badge type-ai-{{ initiative.type_ai_gebruik }}">{{ initiative.type_ai_gebruik }}</span>
+      </div>
+      {% endif %}
+
+      {% if initiative.mds_id or initiative.mds %}
+      <div class="detail-field">
+        <div class="detail-label">MDS team</div>
+        {% if initiative.mds_id %}
+        {% set mds_item = all_mds | selectattr('id', 'equalto', initiative.mds_id) | list | first %}
+        {% if mds_item %}
+        <div class="detail-value"><a href="/api/mds/{{ mds_item.id }}" style="color: var(--fg); text-decoration: none;">{{ mds_item.name }}</a></div>
+        {% else %}
+        <div class="detail-value">{{ initiative.mds or initiative.mds_id }}</div>
+        {% endif %}
+        {% else %}
+        <div class="detail-value">{{ initiative.mds }}</div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <!-- Tags sectie -->
+      <div class="detail-field">
+        <div class="detail-label" style="display: flex; justify-content: space-between; align-items: center;">
+          <span>Tags</span>
+          <button class="btn-ghost" onclick="openAddTagModal()" style="font-size: 12px; padding: 2px 6px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            Toevoegen
+          </button>
+        </div>
+        {% if tags %}
+        <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;">
+          {% for tag in tags %}
+          <a href="/api/tags/{{ tag.id }}" style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; background: var(--bg); border: 1px solid var(--border); font-size: 12px; color: var(--muted); text-decoration: none; cursor: pointer;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12">
+              <path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"/>
+            </svg>
+            {{ tag.name }}
+          </a>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div style="font-size: 13px; color: var(--muted); margin-top: 4px;">Nog geen tags</div>
+        {% endif %}
+      </div>
+
+      <!-- Centrale vragen sectie -->
+      <div class="detail-field">
+        <div class="detail-label" style="display: flex; justify-content: space-between; align-items: center;">
+          <span>Centrale vragen</span>
+          <button class="btn-ghost" onclick="openAddQuestionModal()" style="font-size: 12px; padding: 2px 6px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            Toevoegen
+          </button>
+        </div>
+        {% if central_questions %}
+        <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px;">
+          {% for cq in central_questions %}
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border);">
+            <a href="/api/vragen/{{ cq.id }}" style="font-size: 13px; color: var(--fg); text-decoration: none;">{{ cq.question }}</a>
+            <button onclick="removeQuestion('{{ cq.id }}')" style="background: none; border: none; cursor: pointer; color: var(--muted); padding: 2px 4px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div style="font-size: 13px; color: var(--muted); margin-top: 4px;">Nog geen centrale vraag gekoppeld</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div>
+      <div class="detail-field">
+        <div class="detail-label">Gestart</div>
+        <div class="detail-value">{{ formatDate(initiative.created_at.isoformat() if initiative.created_at else None) }}</div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-label">Laatst gewijzigd</div>
+        <div class="detail-value">{{ formatDate(initiative.updated_at.isoformat() if initiative.updated_at else None) }}</div>
+      </div>
+
+      {% if initiative.stop_reason %}
+      <div style="margin-top: 20px; padding: 16px; background: oklch(94% 0.01 280); border-left: 3px solid var(--stopped);">
+        <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--stopped); margin-bottom: 8px;">Leeruitkomst</div>
+        <div style="font-size: 13px; line-height: 1.5;">{{ initiative.stop_reason }}</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Hypotheses tab -->
+<div class="tab-content" id="tab-hypotheses" style="display: none;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <span style="font-size: 13px; color: var(--muted);">Hypothesen voor dit initiatief</span>
+    <button class="btn btn-primary" onclick="openAddHypothesisModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+      Hypothese toevoegen
+    </button>
+  </div>
+
+  {% if hypotheses %}
+  <div class="hypothesis-list">
+    {% for hyp in hypotheses %}
+    {% if not hyp.parent_hypothesis_id %}
+    <div class="hypothesis-item" style="cursor: pointer;" onclick="openHypothesisDetail('{{ hyp.id }}')">
+      <div class="hypothesis-header">
+        <span class="hypothesis-type type-{{ hyp.type }}">{{ hyp.type }}</span>
+        <div class="hypothesis-actions">
+          <span class="hypothesis-status">{{ hyp.status | capitalize }}</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="color: var(--muted);">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
+        </div>
+      </div>
+      <div class="hypothesis-text markdown-body">{{ renderMarkdown(hyp.description) | safe }}</div>
+      {% if hyp.learning %}
+      <div class="hypothesis-outcome {% if hyp.status == 'weerlegd' %}refuted{% endif %}">
+        <div class="hypothesis-outcome-label">Leeruitkomst</div>
+        <p class="hypothesis-outcome-text">{{ hyp.learning }}</p>
+      </div>
+      {% endif %}
+
+      <!-- Sub-hypotheses -->
+      {% set subs = hypotheses | selectattr('parent_hypothesis_id', 'equalto', hyp.id) | list %}
+      {% if subs %}
+      <div style="margin-top: 12px; margin-left: 16px; padding-left: 12px; border-left: 2px solid var(--border);">
+        {% for sub in subs %}
+        <div class="hypothesis-item" style="background: var(--bg); cursor: pointer;" onclick="event.stopPropagation(); openHypothesisDetail('{{ sub.id }}')">
+          <div class="hypothesis-header">
+            <span class="hypothesis-type type-{{ sub.type }}">{{ sub.type }}</span>
+            <div class="hypothesis-actions">
+              <span class="hypothesis-status">{{ sub.status | capitalize }}</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="color: var(--muted);">
+                <path d="M9 18l6-6-6-6"/>
+              </svg>
+            </div>
+          </div>
+          <div class="hypothesis-text markdown-body">{{ renderMarkdown(sub.description) | safe }}</div>
+          {% if sub.learning %}
+          <div class="hypothesis-outcome {% if sub.status == 'weerlegd' %}refuted{% endif %}">
+            <div class="hypothesis-outcome-label">Leeruitkomst</div>
+            <p class="hypothesis-outcome-text">{{ sub.learning }}</p>
+          </div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state" style="padding: 40px;">
+    <div class="empty-state-title">Nog geen hypothesen</div>
+    <div class="empty-state-text">Voeg een hypothese toe aan dit initiatief.</div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- AI-assistent tab -->
+<div class="tab-content" id="tab-ai" style="display: none;">
+  <div style="display: grid; gap: 16px;">
+    <!-- Hypothese-suggesties -->
+    <div class="ai-section">
+      <div class="ai-section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M12 2a4 4 0 014 4v2a4 4 0 01-8 0V6a4 4 0 014-4z"/>
+          <path d="M6 10v1a6 6 0 0012 0v-1"/>
+          <path d="M12 17v3"/>
+          <path d="M8 20h8"/>
+        </svg>
+        <h3>Hypothese-suggesties</h3>
+      </div>
+      <p class="ai-section-desc">
+        Laat het taalmodel nieuwe hypothesen voorstellen op basis van de context van dit initiatief.
+      </p>
+      <button
+        type="button"
+        id="btn-suggest-hypotheses"
+        class="btn btn-secondary"
+        style="border-color: var(--accent); color: var(--accent);"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+        Suggesties genereren
+      </button>
+      <div id="suggest-hypotheses-spinner" class="ai-spinner">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2a10 10 0 0110 10"/>
+        </svg>
+        <span>Aan het genereren…</span>
+      </div>
+      <div id="suggest-hypotheses-result" style="margin-top: 16px;"></div>
+    </div>
+
+    <!-- One-pager -->
+    <div class="ai-section">
+      <div class="ai-section-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M12 2a4 4 0 014 4v2a4 4 0 01-8 0V6a4 4 0 014-4z"/>
+          <path d="M6 10v1a6 6 0 0012 0v-1"/>
+          <path d="M12 17v3"/>
+          <path d="M8 20h8"/>
+        </svg>
+        <h3>One-Pager</h3>
+      </div>
+      <p class="ai-section-desc">
+        Genereer een korte samenvatting van dit initiatief, geschikt voor een directievoordracht.
+      </p>
+
+      <!-- Opties voor doel en doelgroep -->
+      <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+        <input
+          type="text"
+          id="onepager-purpose"
+          placeholder="Doel (bijv. directievoordracht)"
+          style="flex:1;padding:8px 12px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--fg);"
+        />
+        <input
+          type="text"
+          id="onepager-audience"
+          placeholder="Doelgroep (bijv. directie)"
+          style="flex:1;padding:8px 12px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--fg);"
+        />
+      </div>
+
+      <button
+        type="button"
+        id="btn-onepager"
+        class="btn btn-secondary"
+        style="border-color: var(--accent); color: var(--accent);"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <path d="M14 2v6h6"/>
+        </svg>
+        One-pager genereren
+      </button>
+      <div id="onepager-spinner" class="ai-spinner">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2a10 10 0 0110 10"/>
+        </svg>
+        <span>Aan het genereren…</span>
+      </div>
+      <div id="onepager-result" style="margin-top: 16px;"></div>
+
+      <!-- Lijst van eerdere one-pagers -->
+      <div id="onepager-list" style="margin-top: 20px; display: none;">
+        <div style="font-size: 13px; color: var(--muted); margin-bottom: 8px; font-weight: 500;">Gegenereerde one-pagers</div>
+        <div id="onepager-list-items"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Dossier tab -->
+<div class="tab-content" id="tab-dossier" style="display: none;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <span style="font-size: 13px; color: var(--muted);">Notities en bestanden</span>
+    <div style="display: flex; gap: 8px;">
+      <button class="btn btn-secondary" onclick="openAddNoteModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+        Notitie toevoegen
+      </button>
+      <button class="btn btn-secondary" onclick="openUploadModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        Bestand uploaden
+      </button>
+    </div>
+  </div>
+
+  <!-- Dossier content loaded via HTMX -->
+  <div id="dossier-content">
+    <div class="empty-state" style="padding: 40px;">
+      <div class="empty-state-title">Dossier laden...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit modal -->
+<div class="modal-overlay" id="modal-edit-initiative">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">Initiatief bewerken</h2>
+      <button class="modal-close" onclick="closeModal('edit-initiative')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <form id="form-edit-initiative">
+      <div class="modal-body">
+        <div class="form-field">
+          <label class="form-label form-label-required">Titel</label>
+          <input type="text" name="title" class="form-input" value="{{ initiative.title }}" required>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Beschrijving</label>
+          <textarea name="description" class="form-textarea">{{ initiative.description or '' }}</textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-label form-label-required">Fase</label>
+            <select name="phase" class="form-select" required>
+              {% for p in phases %}
+              <option value="{{ p }}" {% if initiative.phase == p %}selected{% endif %}>{{ phaseLabel(p) }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label">Status</label>
+            <select name="status" class="form-select">
+              {% for s in statuses %}
+              <option value="{{ s }}" {% if initiative.status == s %}selected{% endif %}>{{ s | capitalize }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-label">Horizon</label>
+            <select name="horizon" class="form-select">
+              <option value="">Selecteer horizon</option>
+              {% for h in horizons %}
+              <option value="{{ h }}" {% if initiative.horizon == h %}selected{% endif %}>
+                {{ horizonLabel(h) }} — {% if h == 'h1' %}Nu optimaliseren{% elif h == 'h2' %}Komende jaren uitbouwen{% else %}Toekomst verkennen{% endif %}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label">Eigenaar / team</label>
+            <input type="text" name="owner" class="form-input" value="{{ initiative.owner or '' }}">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-label">Trekker</label>
+            <input type="text" name="trekker" class="form-input" value="{{ initiative.trekker or '' }}" placeholder="Wie initieert/trekt?">
+          </div>
+          <div class="form-field">
+            <label class="form-label">Type AI-gebruik</label>
+            <select name="type_ai_gebruik" class="form-select">
+              <option value="">Selecteer type</option>
+              {% set ai_types = ['bouwen_met_ai', 'ai_in_bouwsels', 'ai_in_bestaande_tools', 'persoonlijke_productiviteit', 'mix'] %}
+              {% for t in ai_types %}
+              <option value="{{ t }}" {% if initiative.type_ai_gebruik == t %}selected{% endif %}>{{ aiTypeLabel(t) }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="form-field">
+          <label class="form-label">MDS team</label>
+          <select name="mds_id" class="form-select">
+            <option value="">Geen MDS geselecteerd</option>
+            {% for m in all_mds %}
+            <option value="{{ m.id }}" {% if initiative.mds_id == m.id %}selected{% endif %}>{{ m.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Tags</label>
+          <select name="tag_ids" id="edit-tag-select" class="form-select" multiple style="min-height: 100px;">
+            {% for t in all_tags %}
+            <option value="{{ t.id }}" {% if t.id in initiative_tag_ids %}selected{% endif %}>{{ t.name }}</option>
+            {% endfor %}
+          </select>
+          <div class="form-hint">Houd Cmd (Mac) of Ctrl (Windows) ingedrukt om meerdere tags te selecteren.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('edit-initiative')">Annuleren</button>
+        <button type="submit" class="btn btn-primary">Opslaan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add tag modal -->
+<div class="modal-overlay" id="modal-add-tag">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">Tag toevoegen</h2>
+      <button class="modal-close" onclick="closeModal('add-tag')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <form id="form-add-tag">
+      <div class="modal-body">
+        <div class="form-field">
+          <label class="form-label">Bestaande tag selecteren</label>
+          <select name="existing_tag_id" id="select-existing-tag" class="form-select">
+            <option value="">— of typ een nieuwe tag —</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label form-label-required">Nieuwe tag</label>
+          <input type="text" name="new_tag_name" id="input-new-tag-name" class="form-input" placeholder="Bijv. duurzaamheid, AI, participatie">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('add-tag')">Annuleren</button>
+        <button type="submit" class="btn btn-primary">Toevoegen</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add hypothesis modal -->
+<div class="modal-overlay" id="modal-add-hypothesis">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">Hypothese toevoegen</h2>
+      <button class="modal-close" onclick="closeModal('add-hypothesis')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <form id="form-add-hypothesis">
+      <div class="modal-body">
+        <div class="form-field">
+          <label class="form-label form-label-required">Type</label>
+          <select name="type" class="form-select" required>
+            <option value="value">Value — levert het initiatief waarde op?</option>
+            <option value="growth">Growth — wordt het initiatief geadopteerd?</option>
+            <option value="compliance">Compliance — voldoet het aan regelgeving?</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label form-label-required">Omschrijving</label>
+          <textarea name="description" class="form-textarea" placeholder="Formuleer de hypothese..." required></textarea>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Status</label>
+          <select name="status" class="form-select">
+            <option value="open">Open (nog niet getoetst)</option>
+            <option value="bevestigd">Bevestigd</option>
+            <option value="weerlegd">Weerlegd</option>
+            <option value="vervallen">Vervallen</option>
+          </select>
+        </div>
+        <div class="form-field" id="hypothesis-learning-field" style="display: none;">
+          <label class="form-label form-label-required">Leeruitkomst</label>
+          <textarea name="learning" class="form-textarea" placeholder="Wat is de uitkomst?"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('add-hypothesis')">Annuleren</button>
+        <button type="submit" class="btn btn-primary">Toevoegen</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add note modal -->
+<div class="modal-overlay" id="modal-add-note">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">Notitie toevoegen</h2>
+      <button class="modal-close" onclick="closeModal('add-note')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <form id="form-add-note">
+      <div class="modal-body">
+        <div class="form-field">
+          <label class="form-label">Titel</label>
+          <input type="text" name="title" class="form-input" placeholder="Korte titel voor de notitie">
+        </div>
+        <div class="form-field">
+          <label class="form-label form-label-required">Inhoud</label>
+          <textarea name="body" class="form-textarea" placeholder="Schrijf je notitie (markdown ondersteund)..." required style="min-height: 150px;"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('add-note')">Annuleren</button>
+        <button type="submit" class="btn btn-primary">Notitie toevoegen</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Upload modal -->
+<div class="modal-overlay" id="modal-upload">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">Bestand uploaden</h2>
+      <button class="modal-close" onclick="closeModal('upload')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <form id="form-upload">
+      <div class="modal-body">
+        <div class="form-field">
+          <label class="form-label form-label-required">Bestand</label>
+          <input type="file" name="file" class="form-input" required style="padding: 8px;">
+          <div class="form-hint">Maximum bestandsgrootte: 25 MB</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('upload')">Annuleren</button>
+        <button type="submit" class="btn btn-primary">Uploaden</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Note detail modal -->
+<div class="modal-overlay" id="modal-note-detail">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title" id="note-detail-title">Notitie</h2>
+      <button class="modal-close" onclick="closeModal('note-detail')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div id="note-detail-meta" style="font-size: 12px; color: var(--muted); margin-bottom: 16px;"></div>
+      <div id="note-detail-body" style="font-size: 14px; line-height: 1.6; white-space: pre-wrap;"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeModal('note-detail')">Sluiten</button>
+      <button type="button" class="btn btn-primary" id="btn-edit-note-from-detail">Bewerken</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit note modal -->
+<div class="modal-overlay" id="modal-edit-note">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">Notitie bewerken</h2>
+      <button class="modal-close" onclick="closeModal('edit-note')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <form id="form-edit-note">
+      <div class="modal-body">
+        <div class="form-field">
+          <label class="form-label">Titel</label>
+          <input type="text" name="title" class="form-input" placeholder="Korte titel voor de notitie">
+        </div>
+        <div class="form-field">
+          <label class="form-label form-label-required">Inhoud</label>
+          <textarea name="body" class="form-textarea" placeholder="Schrijf je notitie (markdown ondersteund)..." required style="min-height: 150px;"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('edit-note')">Annuleren</button>
+        <button type="submit" class="btn btn-primary">Opslaan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add question modal -->
+<div class="modal-overlay" id="modal-add-question">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">Centrale vraag toevoegen</h2>
+      <button class="modal-close" onclick="closeModal('add-question')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <form id="form-add-question">
+      <div class="modal-body">
+        <div class="form-field">
+          <label class="form-label">Bestaande vraag selecteren</label>
+          <select name="existing_question_id" id="select-existing-question" class="form-select">
+            <option value="">— of typ een nieuwe vraag —</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label form-label-required">Nieuwe centrale vraag</label>
+          <textarea name="new_question" id="input-new-question" class="form-textarea" placeholder="Formuleer de centrale vraag..." style="min-height: 60px;"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('add-question')">Annuleren</button>
+        <button type="submit" class="btn btn-primary">Toevoegen</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Hypothesis detail modal -->
+<div class="modal-overlay" id="modal-hypothesis-detail">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">Hypothese details</h2>
+      <button class="modal-close" onclick="closeModal('hypothesis-detail')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <form id="form-hypothesis-detail">
+      <div class="modal-body">
+        <div class="form-field">
+          <label class="form-label form-label-required">Type</label>
+          <select name="type" class="form-select" required>
+            <option value="value">Value — levert het initiatief waarde op?</option>
+            <option value="growth">Growth — wordt het initiatief geadopteerd?</option>
+            <option value="compliance">Compliance — voldoet het aan regelgeving?</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="form-label form-label-required">Omschrijving</label>
+          <textarea name="description" class="form-textarea" placeholder="Formuleer de hypothese..." required style="min-height: 80px;"></textarea>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Status</label>
+          <select name="status" class="form-select" id="hyp-detail-status">
+            <option value="open">Open (nog niet getoetst)</option>
+            <option value="bevestigd">Bevestigd</option>
+            <option value="weerlegd">Weerlegd</option>
+            <option value="vervallen">Vervallen</option>
+          </select>
+        </div>
+        <div class="form-field" id="hyp-detail-learning-field" style="display: none;">
+          <label class="form-label form-label-required">Leeruitkomst</label>
+          <textarea name="learning" class="form-textarea" placeholder="Wat is de uitkomst?" style="min-height: 80px;"></textarea>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Toelichting</label>
+          <textarea name="commentary" class="form-textarea" placeholder="Waarom is deze status gekozen? (optioneel)" style="min-height: 60px;"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="deleteHypothesis()" style="color: var(--stopped); border-color: var(--stopped); margin-right: auto;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+          </svg>
+          Verwijderen
+        </button>
+        <button type="button" class="btn btn-secondary" onclick="closeModal('hypothesis-detail')">Annuleren</button>
+        <button type="submit" class="btn btn-primary">Opslaan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- File preview modal -->
+<div class="modal-overlay" id="modal-file-preview">
+  <div class="modal" style="max-width: 800px;">
+    <div class="modal-header">
+      <h2 class="modal-title" id="file-preview-title">Bestand bekijken</h2>
+      <button class="modal-close" onclick="closeModal('file-preview')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body" style="text-align: center; padding: 24px;">
+      <div id="file-preview-content"></div>
+    </div>
+    <div class="modal-footer">
+      <a id="file-preview-download" href="#" class="btn btn-secondary" download>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+        </svg>
+        Downloaden
+      </a>
+      <button type="button" class="btn btn-primary" onclick="closeModal('file-preview')">Sluiten</button>
+    </div>
+  </div>
+</div>
+
+<!-- One-pager view modal -->
+<!-- One-pager view/edit modal -->
+<div class="modal-overlay" id="modal-onepager-view">
+  <div class="modal" style="max-width: 720px;">
+    <div class="modal-header">
+      <h2 class="modal-title" id="onepager-modal-title">One-Pager</h2>
+      <button class="modal-close" onclick="closeModal('onepager-view')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body" style="padding: 24px;">
+      <!-- Meta info -->
+      <div id="onepager-view-meta" style="font-size: 12px; color: var(--muted); margin-bottom: 16px;"></div>
+
+      <!-- Doel / Doelgroep velden (altijd zichtbaar, bewerkbaar) -->
+      <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+        <div style="flex:1;">
+          <label style="font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px;">Doel</label>
+          <input
+            type="text"
+            id="onepager-edit-purpose"
+            placeholder="bijv. directievoordracht"
+            style="width: 100%; padding: 6px 10px; font-size: 13px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--fg); box-sizing: border-box;"
+          />
+        </div>
+        <div style="flex:1;">
+          <label style="font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px;">Doelgroep</label>
+          <input
+            type="text"
+            id="onepager-edit-audience"
+            placeholder="bijv. directie"
+            style="width: 100%; padding: 6px 10px; font-size: 13px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--fg); box-sizing: border-box;"
+          />
+        </div>
+      </div>
+
+      <!-- View mode: rendered markdown -->
+      <div id="onepager-view-content" class="markdown-body"></div>
+
+      <!-- Edit mode: textarea (hidden by default) -->
+      <textarea
+        id="onepager-edit-content"
+        style="display:none; width: 100%; min-height: 300px; padding: 12px; font-size: 13px; font-family: monospace; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--fg); resize: vertical; box-sizing: border-box;"
+      ></textarea>
+    </div>
+    <div class="modal-footer">
+      <!-- View mode buttons -->
+      <span id="onepager-view-actions">
+        <button type="button" id="btn-copy-onepager" class="btn btn-secondary" style="border-color: var(--accent); color: var(--accent);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <rect x="9" y="9" width="13" height="13" rx="2"/>
+            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+          </svg>
+          Kopiëren
+        </button>
+        <button type="button" id="btn-edit-onepager" class="btn btn-secondary" style="border-color: var(--accent); color: var(--accent);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
+          </svg>
+          Bewerken
+        </button>
+        <button type="button" id="btn-delete-onepager" class="btn btn-secondary" style="border-color: oklch(65% 0.18 25); color: oklch(65% 0.18 25);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z"/>
+          </svg>
+          Verwijderen
+        </button>
+      </span>
+      <!-- Edit mode buttons -->
+      <span id="onepager-edit-actions" style="display:none;">
+        <button type="button" id="btn-cancel-onepager" class="btn btn-secondary">
+          Annuleren
+        </button>
+        <button type="button" id="btn-save-onepager" class="btn btn-primary" style="border-color: var(--accent); color: var(--accent);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+            <polyline points="17 21 17 13 7 13 7 21"/>
+          </svg>
+          Opslaan
+        </button>
+      </span>
+      <button type="button" class="btn btn-primary" onclick="closeModal('onepager-view')">Sluiten</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const initiativeId = '{{ initiative.id }}';
+
+  // HTML-escape helper
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // Tab switching
+  document.querySelectorAll('.tab[data-tab]').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+      tab.classList.add('active');
+      document.getElementById('tab-' + tab.dataset.tab).style.display = '';
+
+      // Load dossier if switching to that tab
+      if (tab.dataset.tab === 'dossier') {
+        loadDossier();
+      }
+    });
+  });
+
+  // Load dossier content
+  async function loadDossier() {
+    const container = document.getElementById('dossier-content');
+
+    try {
+      // Load notes
+      const notes = await apiCall('/api/dossier/notes/' + initiativeId);
+      // Load files
+      const files = await apiCall('/api/dossier/files/' + initiativeId);
+
+      let html = '<div class="dossier-list">';
+
+      notes.forEach(note => {
+        html += `
+          <div class="dossier-item" data-note-id="${note.id}" data-note-title="${(note.title || 'Notitie').replace(/'/g, "\\'")}" data-note-body-escaped="${encodeURIComponent(note.body || '')}" data-note-created="${note.created_at}">
+            <div class="dossier-icon note-clickable" style="cursor:pointer;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
+              </svg>
+            </div>
+            <div class="dossier-info note-clickable" style="cursor:pointer;">
+              <div class="dossier-name">${note.title || 'Notitie'}</div>
+              <div class="dossier-meta">${formatDate(note.created_at)}</div>
+            </div>
+            <div style="display:flex; gap:4px; margin-left:auto;">
+              <button class="btn-ghost" data-action="edit-note" title="Bewerken">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                  <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                  <path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
+              <button class="btn-ghost" data-action="delete-note" title="Verwijderen">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                  <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                </svg>
+              </button>
+            </div>
+          </div>`;
+      });
+
+      files.forEach(f => {
+        const canView = f.mime_type && (f.mime_type.startsWith('image/') || f.mime_type === 'application/pdf');
+        html += `
+          <div class="dossier-item">
+            <div class="dossier-icon" ${canView ? `style="cursor:pointer;" onclick="openFilePreview('${f.id}', '${f.mime_type}')"` : ''}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                <path d="M14 2v6h6"/>
+              </svg>
+            </div>
+            <div class="dossier-info" ${canView ? `style="cursor:pointer;" onclick="openFilePreview('${f.id}', '${f.mime_type}')"` : ''}>
+              <div class="dossier-name"><a href="/api/dossier/files/download/${f.id}" style="color:var(--fg); text-decoration:none;">${f.filename}</a></div>
+              <div class="dossier-meta">${formatFileSize(f.file_size)} • ${formatDate(f.uploaded_at)}</div>
+            </div>
+            <div style="display:flex; gap:4px; margin-left:auto;">
+              ${canView ? `
+              <button class="btn-ghost" onclick="openFilePreview('${f.id}', '${f.mime_type}')" title="Bekijken">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                  <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
+              </button>` : ''}
+              <button class="btn-ghost" data-action="delete-file" data-file-id="${f.id}" title="Verwijderen">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                  <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                </svg>
+              </button>
+            </div>
+          </div>`;
+      });
+
+      if (!notes.length && !files.length) {
+        html = '<div style="text-align: center; padding: 32px; color: var(--muted); font-size: 13px;">Nog geen notities of bestanden.</div>';
+      }
+
+      html += '</div>';
+      container.innerHTML = html;
+
+      // Event delegation for dossier items
+      container.querySelectorAll('.dossier-item').forEach(item => {
+        const noteId = item.dataset.noteId;
+        const title = item.dataset.noteTitle;
+        const body = decodeURIComponent(item.dataset.noteBodyEscaped);
+        const created = item.dataset.noteCreated;
+
+        // Click on icon or info → open note detail
+        item.querySelectorAll('.note-clickable').forEach(el => {
+          el.addEventListener('click', () => openNoteDetail(noteId, title, body, created));
+        });
+
+        // Edit button
+        const editBtn = item.querySelector('[data-action="edit-note"]');
+        if (editBtn) {
+          editBtn.addEventListener('click', () => openEditNoteModal(noteId, title, body));
+        }
+
+        // Delete button
+        const deleteBtn = item.querySelector('[data-action="delete-note"]');
+        if (deleteBtn) {
+          deleteBtn.addEventListener('click', () => deleteNote(noteId));
+        }
+      });
+
+      // Event delegation for file delete buttons
+      container.querySelectorAll('[data-action="delete-file"]').forEach(btn => {
+        const fileId = btn.dataset.fileId;
+        btn.addEventListener('click', () => deleteFile(fileId));
+      });
+    } catch (err) {
+      container.innerHTML = '<div style="text-align: center; padding: 32px; color: var(--muted);">Fout bij laden dossier.</div>';
+    }
+  }
+
+  // Edit modal
+  function openEditModal() {
+    openModal('edit-initiative');
+  }
+
+  document.getElementById('form-edit-initiative').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = {};
+    formData.forEach((value, key) => {
+      if (key === 'horizon' && !value) return;
+      if (key !== 'tag_ids') data[key] = value;
+    });
+
+    // Handle multi-select tag_ids separately
+    const tagSelect = document.getElementById('edit-tag-select');
+    if (tagSelect) {
+      const selectedTags = Array.from(tagSelect.selectedOptions).map(o => o.value);
+      data['tag_ids'] = selectedTags;
+    }
+
+    try {
+      await apiCall('/api/initiatieven/' + initiativeId, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+      closeModal('edit-initiative');
+      showToast('Initiatief bijgewerkt');
+      location.reload();
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+  // Stop modal
+  function openStopModal(id) {
+    openModal('stop-initiative');
+    document.getElementById('form-stop-initiative').dataset.initiativeId = id;
+  }
+
+  document.getElementById('form-stop-initiative').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = {};
+    formData.forEach((value, key) => { if (value) data[key] = value; });
+
+    try {
+      await apiCall('/api/initiatieven/' + initiativeId + '/stop', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      closeModal('stop-initiative');
+      showToast('Initiatief gestopt met leeruitkomst');
+      location.reload();
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+  // Add hypothesis modal
+  function openAddHypothesisModal() {
+    openModal('add-hypothesis');
+  }
+
+  // Show/hide learning field based on status
+  document.querySelector('#form-add-hypothesis select[name="status"]').addEventListener('change', (e) => {
+    const learningField = document.getElementById('hypothesis-learning-field');
+    if (e.target.value === 'bevestigd' || e.target.value === 'weerlegd') {
+      learningField.style.display = '';
+      learningField.querySelector('textarea').required = true;
+    } else {
+      learningField.style.display = 'none';
+      learningField.querySelector('textarea').required = false;
+    }
+  });
+
+  document.getElementById('form-add-hypothesis').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = { initiative_id: initiativeId };
+    formData.forEach((value, key) => { if (value && key !== 'initiative_id') data[key] = value; });
+
+    try {
+      await apiCall('/api/hypothesen/create', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      closeModal('add-hypothesis');
+      showToast('Hypothese toegevoegd');
+      location.reload();
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+  // Add note modal
+  function openAddNoteModal() {
+    openModal('add-note');
+  }
+
+  document.getElementById('form-add-note').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = { initiative_id: initiativeId };
+    formData.forEach((value, key) => { if (value && key !== 'initiative_id') data[key] = value; });
+
+    try {
+      await apiCall('/api/dossier/notes/create', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      closeModal('add-note');
+      showToast('Notitie toegevoegd');
+      loadDossier();
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+  // Upload modal
+  function openUploadModal() {
+    openModal('upload');
+  }
+
+  document.getElementById('form-upload').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+
+    try {
+      await fetch('/api/dossier/files/upload/' + initiativeId, {
+        method: 'POST',
+        body: formData,
+      });
+      closeModal('upload');
+      showToast('Bestand geüpload');
+      loadDossier();
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+  // --- Note detail / view ---
+
+  function openNoteDetail(noteId, title, body, created) {
+    document.getElementById('note-detail-title').textContent = title;
+    document.getElementById('note-detail-meta').textContent = created ? 'Aangemaakt op ' + formatDate(created) : '';
+    document.getElementById('note-detail-body').innerHTML = renderMarkdown(body);
+    document.getElementById('btn-edit-note-from-detail').onclick = () => {
+      closeModal('note-detail');
+      openEditNoteModal(noteId, title, body);
+    };
+    openModal('note-detail');
+  }
+
+  // --- Edit note ---
+
+  function openEditNoteModal(noteId, title, body) {
+    const form = document.getElementById('form-edit-note');
+    form.dataset.noteId = noteId;
+    form.querySelector('[name="title"]').value = title || '';
+    form.querySelector('[name="body"]').value = body || '';
+    openModal('edit-note');
+  }
+
+  document.getElementById('form-edit-note').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const noteId = e.target.dataset.noteId;
+    const formData = new FormData(e.target);
+    const title = formData.get('title') || '';
+    const body = formData.get('body') || '';
+
+    try {
+      await apiCall('/api/dossier/notes/' + noteId, {
+        method: 'PUT',
+        body: JSON.stringify({ title, body }),
+      });
+      closeModal('edit-note');
+      showToast('Notitie bijgewerkt');
+      loadDossier();
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+  // --- Delete note ---
+
+  async function deleteNote(noteId) {
+    if (!confirm('Deze notitie permanent verwijderen?')) return;
+    try {
+      await apiCall('/api/dossier/notes/' + noteId, {
+        method: 'DELETE',
+      });
+      showToast('Notitie verwijderd');
+      loadDossier();
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  // --- Delete file ---
+
+  async function deleteFile(fileId) {
+    if (!confirm('Dit bestand permanent verwijderen?')) return;
+    try {
+      await apiCall('/api/dossier/files/' + fileId, {
+        method: 'DELETE',
+      });
+      showToast('Bestand verwijderd');
+      loadDossier();
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  // --- Tags ---
+
+  async function openAddTagModal() {
+    openModal('add-tag');
+    const select = document.getElementById('select-existing-tag');
+    if (select.options.length <= 1) {
+      try {
+        const tags = await apiCall('/api/tags/json');
+        // Haal huidige tags op om die uit dropdown te filteren
+        const json = await apiCall('/api/initiatieven/' + initiativeId);
+        const currentTagIds = (json.tag_ids || []).map(String);
+
+        select.innerHTML = '<option value="">— of typ een nieuwe tag —</option>';
+        tags.forEach(t => {
+          if (!currentTagIds.includes(t.id)) {
+            const opt = document.createElement('option');
+            opt.value = t.id;
+            opt.textContent = t.name;
+            select.appendChild(opt);
+          }
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  }
+
+  document.getElementById('form-add-tag').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const existingId = formData.get('existing_tag_id');
+    const newTagName = formData.get('new_tag_name')?.trim().toLowerCase();
+
+    let tagId = existingId;
+
+    // Als er geen bestaande tag is geselecteerd, maak nieuwe aan
+    if (!tagId && newTagName) {
+      try {
+        const result = await apiCall('/api/tags/create', {
+          method: 'POST',
+          body: JSON.stringify({ name: newTagName }),
+        });
+        tagId = result.id;
+      } catch (err) {
+        console.error(err);
+        return;
+      }
+    }
+
+    if (!tagId) {
+      showToast('Selecteer een bestaande tag of typ een nieuwe');
+      return;
+    }
+
+    // Update initiatief met nieuwe tag_ids
+    try {
+      const json = await apiCall('/api/initiatieven/' + initiativeId);
+      const currentTagIds = (json.tag_ids || []).map(String);
+      if (!currentTagIds.includes(tagId)) {
+        currentTagIds.push(tagId);
+      }
+      await apiCall('/api/initiatieven/' + initiativeId, {
+        method: 'PUT',
+        body: JSON.stringify({ tag_ids: currentTagIds }),
+      });
+      closeModal('add-tag');
+      showToast('Tag toegevoegd');
+      location.reload();
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+  // --- Centrale vragen ---
+
+  async function openAddQuestionModal() {
+    openModal('add-question');
+    // Laad bestaande vragen in dropdown
+    const select = document.getElementById('select-existing-question');
+    if (select.options.length <= 1) {
+      try {
+        const questions = await apiCall('/api/vragen/json');
+        select.innerHTML = '<option value="">— of typ een nieuwe vraag —</option>';
+        questions.forEach(q => {
+          const opt = document.createElement('option');
+          opt.value = q.id;
+          opt.textContent = q.question;
+          select.appendChild(opt);
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  }
+
+  document.getElementById('form-add-question').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const existingId = formData.get('existing_question_id');
+    const newQuestion = formData.get('new_question')?.trim();
+
+    let questionId = existingId;
+
+    // Als er geen bestaande vraag is geselecteerd, maak nieuwe aan
+    if (!questionId && newQuestion) {
+      try {
+        const result = await apiCall('/api/vragen/create', {
+          method: 'POST',
+          body: JSON.stringify({ question: newQuestion }),
+        });
+        questionId = result.id;
+      } catch (err) {
+        console.error(err);
+        return;
+      }
+    }
+
+    if (!questionId) {
+      showToast('Selecteer een bestaande vraag of typ een nieuwe');
+      return;
+    }
+
+    // Koppel vraag aan initiatief
+    try {
+      await apiCall('/api/vragen/' + questionId + '/initiatives/add/' + initiativeId, {
+        method: 'POST',
+      });
+      closeModal('add-question');
+      showToast('Centrale vraag toegevoegd');
+      location.reload();
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+  async function removeQuestion(questionId) {
+    if (!confirm('Deze centrale vraag loskoppelen van het initiatief?')) return;
+    try {
+      await apiCall('/api/vragen/' + questionId + '/initiatives/remove/' + initiativeId, {
+        method: 'DELETE',
+      });
+      showToast('Centrale vraag losgekoppeld');
+      location.reload();
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  // --- AI: Hypothese-suggesties ---
+
+  document.getElementById('btn-suggest-hypotheses').addEventListener('click', async () => {
+    const spinner = document.getElementById('suggest-hypotheses-spinner');
+    const result = document.getElementById('suggest-hypotheses-result');
+    spinner.classList.add('active');
+    result.innerHTML = '';
+
+    try {
+      const data = await apiCall('/api/ai/initiatieven/' + initiativeId + '/suggest-hypotheses', {
+        method: 'POST',
+      });
+      spinner.classList.remove('active');
+
+      if (!data.success) {
+        result.innerHTML = `<div class="ai-result-error">${data.error || 'Er ging iets mis.'}</div>`;
+        return;
+      }
+
+      if (!data.suggestions || !data.suggestions.length) {
+        result.innerHTML = '<div style="font-size: 13px; color: var(--muted);">Geen suggesties gegenereerd.</div>';
+        return;
+      }
+
+      let html = '<div style="display: flex; flex-direction: column; gap: 1px; background: var(--border); border: 1px solid var(--border);">';
+      data.suggestions.forEach((s, idx) => {
+        const typeLabel = {value:'Value', growth:'Growth', compliance:'Compliance'}[s.type] || s.type;
+        // Encode description voor safe inline usage
+        const descSafe = (s.description || '').replace(/'/g, "\\'");
+        html += `
+          <div class="ai-suggestion-item">
+            <div class="ai-suggestion-header">
+              <div style="flex: 1;">
+                <span class="ai-suggestion-type">${typeLabel}</span>
+                <p class="ai-suggestion-desc">${renderMarkdownInline(s.description || '')}</p>
+                ${s.rationale ? `<p class="ai-suggestion-rationale">${renderMarkdownInline(s.rationale)}</p>` : ''}
+              </div>
+              <button
+                class="ai-btn-accept"
+                data-type="${s.type || ''}"
+                data-desc="${descSafe}"
+                onclick="acceptHypothesis(this, this.dataset.type, this.dataset.desc)"
+              >
+                Toevoegen
+              </button>
+            </div>
+          </div>`;
+      });
+      html += '</div>';
+      result.innerHTML = html;
+    } catch (err) {
+      spinner.classList.remove('active');
+      result.innerHTML = `<div class="ai-result-error">Fout: ${err.message || err}</div>`;
+    }
+  });
+
+  async function acceptHypothesis(btn, type, description) {
+    // Knop uitzetten tijdens verwerking
+    btn.disabled = true;
+    btn.textContent = 'Toevoegen…';
+
+    try {
+      await apiCall('/api/ai/initiatieven/' + initiativeId + '/accept-hypothesis', {
+        method: 'POST',
+        body: JSON.stringify({ type, description }),
+      });
+      // Vinkje tonen — geen page reload
+      btn.classList.add('accepted');
+      btn.textContent = '✓ Toegevoegd';
+      showToast('Hypothese toegevoegd');
+    } catch (err) {
+      console.error(err);
+      btn.disabled = false;
+      btn.textContent = 'Toevoegen';
+      alert('Kon hypothese niet toevoegen: ' + (err.message || err));
+    }
+  }
+
+  // --- AI: One-pager ---
+
+  let currentOnePagerContent = '';
+  let currentOnePagerId = null;
+  let isEditMode = false;
+
+  function _buildTags(purpose, audience) {
+    let tags = '';
+    if (purpose) tags += `<span style="display:inline-block;font-size:10px;padding:2px 7px;margin-right:6px;background:var(--accent);color:white;border-radius:10px;opacity:.8;">${escapeHtml(purpose)}</span>`;
+    if (audience) tags += `<span style="display:inline-block;font-size:10px;padding:2px 7px;margin-right:6px;background:oklch(55% 0.15 260);color:white;border-radius:10px;opacity:.8;">${escapeHtml(audience)}</span>`;
+    return tags;
+  }
+
+  async function loadOnePagerList() {
+    const listContainer = document.getElementById('onepager-list');
+    const listItems = document.getElementById('onepager-list-items');
+    try {
+      const data = await apiCall('/api/ai/initiatieven/' + initiativeId + '/one-pagers');
+      if (!data.one_pagers || data.one_pagers.length === 0) {
+        listContainer.style.display = 'none';
+        return;
+      }
+      listItems.innerHTML = '';
+      data.one_pagers.forEach(p => {
+        const date = new Date(p.created_at);
+        const formatted = date.toLocaleDateString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric' }) + ' ' + date.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+        const tags = _buildTags(p.purpose, p.audience);
+        const item = document.createElement('div');
+        item.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:10px 14px;margin-bottom:4px;background:var(--surface);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:background .15s;';
+        item.innerHTML = `
+          <div style="flex:1;min-width:0;overflow:hidden;">
+            <div style="font-size:13px;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.preview)}</div>
+            <div style="display:flex;align-items:center;gap:4px;margin-top:4px;flex-wrap:wrap;">
+              ${tags}
+              <span style="font-size:11px;color:var(--muted);">${formatted}</span>
+            </div>
+          </div>
+        `;
+        item.addEventListener('click', () => openOnePagerModal(p.id));
+        listItems.appendChild(item);
+      });
+      listContainer.style.display = 'block';
+    } catch (err) {
+      console.error('Kon one-pager lijst niet laden:', err);
+      listContainer.style.display = 'none';
+    }
+  }
+
+  async function openOnePagerModal(onePagerId) {
+    try {
+      const data = await apiCall('/api/ai/initiatieven/' + initiativeId + '/one-pagers/' + onePagerId);
+      currentOnePagerContent = data.content || '';
+      currentOnePagerId = data.id;
+      isEditMode = false;
+
+      const date = new Date(data.created_at);
+      const formatted = date.toLocaleDateString('nl-NL', { day: '2-digit', month: 'long', year: 'numeric' }) + ' om ' + date.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+
+      document.getElementById('onepager-modal-title').textContent = 'One-Pager';
+      document.getElementById('onepager-view-meta').textContent = 'Gegenereerd op ' + formatted;
+      document.getElementById('onepager-view-content').innerHTML = renderMarkdown(currentOnePagerContent);
+
+      // Vul doel/doelgroep velden
+      document.getElementById('onepager-edit-purpose').value = data.purpose || '';
+      document.getElementById('onepager-edit-audience').value = data.audience || '';
+
+      // Zet view mode aan, edit mode uit
+      showViewMode();
+
+      // Copy button
+      const copyBtn = document.getElementById('btn-copy-onepager');
+      copyBtn.onclick = () => {
+        navigator.clipboard.writeText(currentOnePagerContent);
+        showToast('One-pager gekopieerd!');
+      };
+
+      // Edit button
+      document.getElementById('btn-edit-onepager').onclick = () => showEditMode();
+
+      // Delete button
+      const deleteBtn = document.getElementById('btn-delete-onepager');
+      deleteBtn.onclick = async () => {
+        if (!confirm('Weet je zeker dat je deze one-pager wilt verwijderen?')) return;
+        try {
+          await apiCall('/api/ai/initiatieven/' + initiativeId + '/one-pagers/' + currentOnePagerId, {
+            method: 'DELETE',
+          });
+          closeModal('onepager-view');
+          showToast('One-pager verwijderd');
+          loadOnePagerList();
+        } catch (err) {
+          alert('Kon one-pager niet verwijderen: ' + (err.message || err));
+        }
+      };
+
+      // Cancel edit button
+      document.getElementById('btn-cancel-onepager').onclick = () => showViewMode();
+
+      // Save button
+      document.getElementById('btn-save-onepager').onclick = saveOnePager;
+
+      openModal('onepager-view');
+    } catch (err) {
+      alert('Kon one-pager niet laden: ' + (err.message || err));
+    }
+  }
+
+  function showViewMode() {
+    isEditMode = false;
+    document.getElementById('onepager-view-content').style.display = '';
+    document.getElementById('onepager-edit-content').style.display = 'none';
+    document.getElementById('onepager-view-actions').style.display = '';
+    document.getElementById('onepager-edit-actions').style.display = 'none';
+    // Maak purpose/audience velden read-only in view mode
+    document.getElementById('onepager-edit-purpose').readOnly = true;
+    document.getElementById('onepager-edit-audience').readOnly = true;
+    document.getElementById('onepager-edit-purpose').style.opacity = '0.6';
+    document.getElementById('onepager-edit-audience').style.opacity = '0.6';
+  }
+
+  function showEditMode() {
+    isEditMode = true;
+    document.getElementById('onepager-modal-title').textContent = 'One-Pager bewerken';
+    document.getElementById('onepager-view-content').style.display = 'none';
+    document.getElementById('onepager-edit-content').style.display = '';
+    document.getElementById('onepager-edit-content').value = currentOnePagerContent;
+    document.getElementById('onepager-view-actions').style.display = 'none';
+    document.getElementById('onepager-edit-actions').style.display = '';
+    // Maak purpose/audience velden bewerkbaar
+    document.getElementById('onepager-edit-purpose').readOnly = false;
+    document.getElementById('onepager-edit-audience').readOnly = false;
+    document.getElementById('onepager-edit-purpose').style.opacity = '1';
+    document.getElementById('onepager-edit-audience').style.opacity = '1';
+  }
+
+  async function saveOnePager() {
+    const content = document.getElementById('onepager-edit-content').value;
+    const purpose = document.getElementById('onepager-edit-purpose').value.trim();
+    const audience = document.getElementById('onepager-edit-audience').value.trim();
+
+    try {
+      const data = await apiCall('/api/ai/initiatieven/' + initiativeId + '/one-pagers/' + currentOnePagerId, {
+        method: 'PUT',
+        body: JSON.stringify({ content, purpose, audience }),
+      });
+      if (data.success) {
+        currentOnePagerContent = data.content;
+        showToast('Wijzigingen opgeslagen');
+        showViewMode();
+        // Update de meta met nieuwe info
+        document.getElementById('onepager-view-content').innerHTML = renderMarkdown(currentOnePagerContent);
+        loadOnePagerList();
+      }
+    } catch (err) {
+      alert('Kon wijzigingen niet opslaan: ' + (err.message || err));
+    }
+  }
+
+  document.getElementById('btn-onepager').addEventListener('click', async () => {
+    const spinner = document.getElementById('onepager-spinner');
+    const result = document.getElementById('onepager-result');
+    spinner.classList.add('active');
+    result.innerHTML = '';
+
+    try {
+      const data = await apiCall('/api/ai/initiatieven/' + initiativeId + '/one-pager', {
+        method: 'POST',
+        body: JSON.stringify({
+          purpose: document.getElementById('onepager-purpose').value,
+          audience: document.getElementById('onepager-audience').value,
+        }),
+      });
+      spinner.classList.remove('active');
+
+      if (!data.success) {
+        result.innerHTML = `<div class="ai-result-error">${data.error || 'Er ging iets mis.'}</div>`;
+        return;
+      }
+
+      // Render met markdown support
+      const encoded = encodeURIComponent(data.one_pager || '');
+      result.innerHTML = `
+        <div class="ai-result-content">
+          ${renderMarkdown(data.one_pager || '')}
+        </div>
+        <button
+          class="ai-btn-copy"
+          onclick="navigator.clipboard.writeText(decodeURIComponent('${encoded}')); showToast('Gekopieerd!')"
+        >
+          Kopiëren
+        </button>`;
+
+      // Laad de lijst opnieuw zodat de nieuwe one-pager verschijnt
+      loadOnePagerList();
+    } catch (err) {
+      spinner.classList.remove('active');
+      result.innerHTML = `<div class="ai-result-error">Fout: ${err.message || err}</div>`;
+    }
+  });
+
+  // Laad one-pager lijst bij pagina laden
+  loadOnePagerList();
+
+  // --- Hypothesis detail modal ---
+
+  let currentHypothesisId = null;
+
+  async function openHypothesisDetail(hypId) {
+    try {
+      const tree = await apiCall('/api/hypothesen/initiative/' + initiativeId);
+      // Find the hypothesis in the tree
+      let hyp = null;
+      function findInTree(nodes) {
+        for (const node of nodes) {
+          if (node.id === hypId) { hyp = node; return true; }
+          if (node.sub_hypotheses && findInTree(node.sub_hypotheses)) return true;
+        }
+        return false;
+      }
+      findInTree(tree);
+
+      if (!hyp) {
+        showToast('Hypothese niet gevonden');
+        return;
+      }
+
+      currentHypothesisId = hypId;
+      const form = document.getElementById('form-hypothesis-detail');
+      form.querySelector('[name="type"]').value = hyp.type;
+      form.querySelector('[name="description"]').value = hyp.description;
+      form.querySelector('[name="status"]').value = hyp.status;
+      form.querySelector('[name="learning"]').value = hyp.learning || '';
+
+      // Show/hide learning field based on status
+      triggerHypDetailLearning(hyp.status);
+
+      openModal('hypothesis-detail');
+    } catch (err) {
+      console.error(err);
+      showToast('Fout bij laden hypothese');
+    }
+  }
+
+  function triggerHypDetailLearning(status) {
+    const learningField = document.getElementById('hyp-detail-learning-field');
+    if (status === 'bevestigd' || status === 'weerlegd') {
+      learningField.style.display = '';
+      learningField.querySelector('textarea').required = true;
+    } else {
+      learningField.style.display = 'none';
+      learningField.querySelector('textarea').required = false;
+    }
+  }
+
+  document.getElementById('hyp-detail-status').addEventListener('change', (e) => {
+    triggerHypDetailLearning(e.target.value);
+  });
+
+  document.getElementById('form-hypothesis-detail').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = {};
+    formData.forEach((value, key) => { if (key !== 'learning' || value) data[key] = value; });
+
+    try {
+      await apiCall('/api/hypothesen/' + currentHypothesisId, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+      closeModal('hypothesis-detail');
+      showToast('Hypothese bijgewerkt');
+      location.reload();
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+  // --- File preview ---
+
+  function openFilePreview(fileId, mimeType) {
+    const content = document.getElementById('file-preview-content');
+    const downloadLink = document.getElementById('file-preview-download');
+    const title = document.getElementById('file-preview-title');
+
+    downloadLink.href = '/api/dossier/files/download/' + fileId;
+
+    if (mimeType && mimeType.startsWith('image/')) {
+      title.textContent = 'Afbeelding bekijken';
+      content.innerHTML = `<img src="/api/dossier/files/view/${fileId}" style="max-width: 100%; max-height: 60vh; object-fit: contain;" alt="preview">`;
+    } else if (mimeType === 'application/pdf') {
+      title.textContent = 'PDF bekijken';
+      content.innerHTML = `<iframe src="/api/dossier/files/view/${fileId}" style="width: 100%; height: 60vh; border: 1px solid var(--border);" frameborder="0"></iframe>`;
+    }
+
+    openModal('file-preview');
+  }
+
+  async function deleteHypothesis() {
+    if (!currentHypothesisId) return;
+    if (!confirm('Deze hypothese permanent verwijderen?')) return;
+
+    try {
+      await apiCall('/api/hypothesen/' + currentHypothesisId, {
+        method: 'DELETE',
+      });
+      closeModal('hypothesis-detail');
+      showToast('Hypothese verwijderd');
+      location.reload();
+    } catch (err) {
+      console.error(err);
+    }
+  }
+</script>
+{% endblock %}

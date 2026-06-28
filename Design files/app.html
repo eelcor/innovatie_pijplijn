@@ -1,0 +1,1995 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Innovatiepijplijn — Gemeente Leiden</title>
+  <style>
+    :root {
+      --bg: oklch(99% 0.002 240);
+      --surface: oklch(100% 0 0);
+      --fg: oklch(18% 0.012 240);
+      --muted: oklch(50% 0.012 240);
+      --border: oklch(88% 0.004 240);
+      --accent: oklch(50% 0.18 25);
+      --accent-hover: oklch(45% 0.18 25);
+
+      /* Status */
+      --success: oklch(52% 0.12 145);
+      --warning: oklch(68% 0.14 85);
+      --stopped: oklch(55% 0.02 280);
+
+      /* Phase colors */
+      --verkenning: oklch(55% 0.14 255);
+      --experiment: oklch(65% 0.12 85);
+      --pilot: oklch(52% 0.12 145);
+      --opschaling: oklch(50% 0.18 25);
+
+      /* Hypothesis */
+      --value: oklch(55% 0.14 255);
+      --growth: oklch(52% 0.12 145);
+      --compliance: oklch(58% 0.10 50);
+
+      --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+      --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+      --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* Layout */
+    .app-layout {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo-mark {
+      width: 28px;
+      height: 28px;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo-mark svg {
+      width: 16px;
+      height: 16px;
+      color: white;
+    }
+
+    .logo-text {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--fg);
+      letter-spacing: -0.01em;
+    }
+
+    .logo-sub {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    .nav-section {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .nav-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      padding: 8px 12px 6px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.1s;
+      border: 1px solid transparent;
+    }
+
+    .nav-item:hover {
+      color: var(--fg);
+      background: var(--bg);
+    }
+
+    .nav-item.active {
+      color: var(--fg);
+      background: var(--surface);
+      border-color: var(--border);
+    }
+
+    .nav-item svg {
+      width: 16px;
+      height: 16px;
+      opacity: 0.6;
+    }
+
+    .nav-item.active svg {
+      opacity: 1;
+    }
+
+    .nav-badge {
+      margin-left: auto;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--muted);
+      background: var(--bg);
+      padding: 2px 6px;
+      border: 1px solid var(--border);
+    }
+
+    /* Main content */
+    .main-content {
+      padding: 32px;
+      max-width: 1200px;
+    }
+
+    /* Header */
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 32px;
+      gap: 24px;
+    }
+
+    .page-title {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--fg);
+      letter-spacing: -0.02em;
+    }
+
+    .page-subtitle {
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    /* Search */
+    .search-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      width: 280px;
+    }
+
+    .search-bar svg {
+      width: 16px;
+      height: 16px;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .search-bar input {
+      border: none;
+      background: none;
+      outline: none;
+      font-size: 13px;
+      color: var(--fg);
+      width: 100%;
+    }
+
+    .search-bar input::placeholder {
+      color: var(--muted);
+    }
+
+    .search-bar kbd {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      background: var(--bg);
+      color: var(--muted);
+      padding: 2px 5px;
+      border: 1px solid var(--border);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all 0.1s;
+      text-decoration: none;
+    }
+
+    .btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--fg);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      padding: 6px 10px;
+    }
+
+    .btn-ghost:hover {
+      color: var(--fg);
+      background: var(--bg);
+    }
+
+    /* Filters */
+    .filters-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .filter-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.1s;
+    }
+
+    .filter-chip:hover {
+      color: var(--fg);
+      border-color: var(--muted);
+    }
+
+    .filter-chip.active {
+      background: var(--fg);
+      color: var(--surface);
+      border-color: var(--fg);
+    }
+
+    .filter-chip svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    /* Stats */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      padding: 20px 24px;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 600;
+      color: var(--fg);
+      letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stat-change {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      font-size: 11px;
+      font-weight: 500;
+      margin-top: 4px;
+      color: var(--success);
+    }
+
+    .stat-change.down {
+      color: var(--warning);
+    }
+
+    /* Table */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+
+    .data-table th,
+    .data-table td {
+      text-align: left;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .data-table th {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      background: var(--bg);
+    }
+
+    .data-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .data-table tr:hover td {
+      background: var(--bg);
+    }
+
+    .data-table td {
+      font-size: 13px;
+      vertical-align: middle;
+    }
+
+    .initiative-name {
+      font-weight: 500;
+      color: var(--fg);
+    }
+
+    .initiative-desc {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+      max-width: 280px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Badges */
+    .phase-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .phase-verkenning {
+      background: oklch(95% 0.03 255);
+      color: var(--verkenning);
+    }
+
+    .phase-experiment {
+      background: oklch(95% 0.03 85);
+      color: oklch(55% 0.12 85);
+    }
+
+    .phase-pilot {
+      background: oklch(95% 0.03 145);
+      color: var(--pilot);
+    }
+
+    .phase-opschaling {
+      background: oklch(95% 0.04 25);
+      color: var(--accent);
+    }
+
+    .phase-gestopt {
+      background: oklch(94% 0.01 280);
+      color: var(--stopped);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .status-actief {
+      background: var(--success);
+    }
+
+    .status-on-hold {
+      background: var(--warning);
+    }
+
+    .status-gestopt {
+      background: var(--stopped);
+    }
+
+    .horizon-badge {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      background: var(--bg);
+      padding: 2px 6px;
+      border: 1px solid var(--border);
+    }
+
+    .meta-text {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .hypotheses-count {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .hypotheses-count svg {
+      width: 12px;
+      height: 12px;
+      opacity: 0.6;
+    }
+
+    /* Cards grid */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+    }
+
+    .initiative-card {
+      background: var(--surface);
+      padding: 20px;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+
+    .initiative-card:hover {
+      background: var(--bg);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .card-title {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--fg);
+      line-height: 1.35;
+    }
+
+    .card-description {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+      margin-bottom: 16px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .card-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .card-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .card-meta-item svg {
+      width: 12px;
+      height: 12px;
+      opacity: 0.6;
+    }
+
+    /* Detail panel */
+    .detail-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 560px;
+      height: 100vh;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      z-index: 200;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .detail-panel.open {
+      display: flex;
+    }
+
+    .detail-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .detail-title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--fg);
+      letter-spacing: -0.01em;
+    }
+
+    .detail-close {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      color: var(--muted);
+      transition: all 0.1s;
+    }
+
+    .detail-close:hover {
+      color: var(--fg);
+      background: var(--bg);
+    }
+
+    .detail-close svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .detail-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+    }
+
+    .detail-section {
+      margin-bottom: 32px;
+    }
+
+    .detail-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .detail-section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .detail-field {
+      margin-bottom: 16px;
+    }
+
+    .detail-field:last-child {
+      margin-bottom: 0;
+    }
+
+    .detail-label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .detail-value {
+      font-size: 14px;
+      color: var(--fg);
+    }
+
+    .detail-badges {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* Hypotheses list */
+    .hypothesis-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+    }
+
+    .hypothesis-item {
+      background: var(--surface);
+      padding: 16px;
+    }
+
+    .hypothesis-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .hypothesis-type {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 2px 6px;
+    }
+
+    .type-value {
+      background: oklch(95% 0.03 255);
+      color: var(--value);
+    }
+
+    .type-growth {
+      background: oklch(95% 0.03 145);
+      color: var(--growth);
+    }
+
+    .type-compliance {
+      background: oklch(95% 0.02 50);
+      color: var(--compliance);
+    }
+
+    .hypothesis-status {
+      font-size: 11px;
+      color: var(--muted);
+      margin-left: auto;
+    }
+
+    .hypothesis-text {
+      font-size: 13px;
+      color: var(--fg);
+      line-height: 1.5;
+    }
+
+    .hypothesis-outcome {
+      margin-top: 12px;
+      padding: 12px;
+      background: var(--bg);
+      border-left: 2px solid var(--success);
+    }
+
+    .hypothesis-outcome.refuted {
+      border-left-color: var(--stopped);
+    }
+
+    .hypothesis-outcome-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .hypothesis-outcome-text {
+      font-size: 12px;
+      color: var(--fg);
+      line-height: 1.5;
+    }
+
+    /* Dossier */
+    .dossier-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+    }
+
+    .dossier-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--surface);
+      padding: 12px 16px;
+    }
+
+    .dossier-icon {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    .dossier-icon svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .dossier-info {
+      flex: 1;
+    }
+
+    .dossier-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--fg);
+    }
+
+    .dossier-meta {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: oklch(0% 0 0 / 0.5);
+      z-index: 300;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--surface);
+      width: 100%;
+      max-width: 560px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--border);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--fg);
+      letter-spacing: -0.01em;
+    }
+
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      color: var(--muted);
+      transition: all 0.1s;
+    }
+
+    .modal-close:hover {
+      color: var(--fg);
+      background: var(--bg);
+    }
+
+    .modal-close svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .modal-body {
+      padding: 24px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* Form */
+    .form-field {
+      margin-bottom: 20px;
+    }
+
+    .form-field:last-child {
+      margin-bottom: 0;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--fg);
+      margin-bottom: 6px;
+    }
+
+    .form-label-required::after {
+      content: " *";
+      color: var(--accent);
+    }
+
+    .form-input,
+    .form-select,
+    .form-textarea {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 13px;
+      font-family: var(--font-body);
+      color: var(--fg);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      outline: none;
+      transition: border-color 0.1s;
+    }
+
+    .form-input:focus,
+    .form-select:focus,
+    .form-textarea:focus {
+      border-color: var(--fg);
+    }
+
+    .form-input::placeholder,
+    .form-textarea::placeholder {
+      color: var(--muted);
+    }
+
+    .form-textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .form-hint {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 24px;
+    }
+
+    .tab {
+      padding: 12px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      position: relative;
+      transition: color 0.1s;
+    }
+
+    .tab:hover {
+      color: var(--fg);
+    }
+
+    .tab.active {
+      color: var(--fg);
+    }
+
+    .tab.active::after {
+      content: "";
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--fg);
+    }
+
+    /* Curaties */
+    .curation-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+    }
+
+    .curation-card {
+      background: var(--surface);
+      padding: 20px;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+
+    .curation-card:hover {
+      background: var(--bg);
+    }
+
+    .curation-title {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--fg);
+      margin-bottom: 8px;
+    }
+
+    .curation-description {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+
+    .curation-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 64px 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+
+    .empty-state-icon {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    .empty-state-icon svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    .empty-state-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--fg);
+      margin-bottom: 4px;
+    }
+
+    .empty-state-text {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+
+    /* View toggle */
+    .view-toggle {
+      display: flex;
+      border: 1px solid var(--border);
+    }
+
+    .view-toggle-btn {
+      padding: 6px 10px;
+      background: var(--surface);
+      border: none;
+      cursor: pointer;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.1s;
+    }
+
+    .view-toggle-btn:first-child {
+      border-right: 1px solid var(--border);
+    }
+
+    .view-toggle-btn:hover {
+      color: var(--fg);
+    }
+
+    .view-toggle-btn.active {
+      background: var(--fg);
+      color: var(--surface);
+    }
+
+    .view-toggle-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .app-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        display: none;
+      }
+
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .detail-panel {
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .page-header {
+        flex-direction: column;
+      }
+
+      .header-actions {
+        width: 100%;
+      }
+
+      .search-bar {
+        width: 100%;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Screen visibility */
+    .screen {
+      display: none;
+    }
+
+    .screen.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">
+        <div class="logo-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+            <path d="M2 17l10 5 10-5"/>
+            <path d="M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <div>
+          <div class="logo-text">Innovatiepijplijn</div>
+          <div class="logo-sub">Gemeente Leiden</div>
+        </div>
+      </div>
+
+      <nav class="nav-section">
+        <div class="nav-label">Overzicht</div>
+        <a href="#" class="nav-item active" data-screen="dashboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+          </svg>
+          Dashboard
+        </a>
+        <a href="#" class="nav-item" data-screen="initiatieven">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 6v6l4 2"/>
+          </svg>
+          Initiatieven
+          <span class="nav-badge">24</span>
+        </a>
+        <a href="#" class="nav-item" data-screen="curaties">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
+          </svg>
+          Curaties
+          <span class="nav-badge">5</span>
+        </a>
+      </nav>
+
+      <nav class="nav-section">
+        <div class="nav-label">Filters</div>
+        <a href="#" class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="M21 21l-4.35-4.35"/>
+          </svg>
+          Zoeken
+        </a>
+        <a href="#" class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+          </svg>
+          Geavanceerd filteren
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Main content -->
+    <main class="main-content">
+      <!-- Dashboard screen -->
+      <div class="screen active" id="screen-dashboard">
+        <header class="page-header">
+          <div>
+            <h1 class="page-title">Dashboard</h1>
+            <p class="page-subtitle">Overzicht van alle innovatie-initiatieven</p>
+          </div>
+          <div class="header-actions">
+            <div class="search-bar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="M21 21l-4.35-4.35"/>
+              </svg>
+              <input type="text" placeholder="Zoeken in initiatieven...">
+              <kbd>⌘K</kbd>
+            </div>
+            <button class="btn btn-primary" onclick="openModal('new-initiative')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+              Nieuw initiatief
+            </button>
+          </div>
+        </header>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Totaal initiatieven</div>
+            <div class="stat-value">24</div>
+            <div class="stat-change">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+                <path d="M12 19V5M5 12l7-7 7 7"/>
+              </svg>
+              +3 deze maand
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Actief</div>
+            <div class="stat-value">18</div>
+            <div class="stat-change">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+                <path d="M12 19V5M5 12l7-7 7 7"/>
+              </svg>
+              +2 deze maand
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Gestopt (met leeruitkomst)</div>
+            <div class="stat-value">6</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Hypothesen getoetst</div>
+            <div class="stat-value">47</div>
+            <div class="stat-change">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+                <path d="M12 19V5M5 12l7-7 7 7"/>
+              </svg>
+              +8 deze maand
+            </div>
+          </div>
+        </div>
+
+        <div class="filters-row">
+          <button class="filter-chip active">Alle fasen</button>
+          <button class="filter-chip">Verkenning</button>
+          <button class="filter-chip">Experiment</button>
+          <button class="filter-chip">Pilot</button>
+          <button class="filter-chip">Opschaling</button>
+          <button class="filter-chip">Gestopt</button>
+        </div>
+
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Initiatief</th>
+              <th>Fase</th>
+              <th>Status</th>
+              <th>Horizon</th>
+              <th>Hypothesen</th>
+              <th>Laatst gewijzigd</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr onclick="openDetail()">
+              <td>
+                <div class="initiative-name">AI-gestuurde vergunningencheck</div>
+                <div class="initiative-desc">Automatische pre-screening van vergunningsaanvragen</div>
+              </td>
+              <td><span class="phase-badge phase-pilot">Pilot</span></td>
+              <td><span class="status-dot status-actief"></span></td>
+              <td><span class="horizon-badge">H2</span></td>
+              <td>
+                <span class="hypotheses-count">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M9 11l3 3L22 4"/>
+                  </svg>
+                  4/5
+                </span>
+              </td>
+              <td><span class="meta-text">Vandaag</span></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="initiative-name">Slimme verkeerslichten Breestraat</div>
+                <div class="initiative-desc">Dynamische verkeersregeling op basis van drukte</div>
+              </td>
+              <td><span class="phase-badge phase-experiment">Experiment</span></td>
+              <td><span class="status-dot status-actief"></span></td>
+              <td><span class="horizon-badge">H2</span></td>
+              <td>
+                <span class="hypotheses-count">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M9 11l3 3L22 4"/>
+                  </svg>
+                  2/3
+                </span>
+              </td>
+              <td><span class="meta-text">Gisteren</span></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="initiative-name">Digitale buurtparticipatie</div>
+                <div class="initiative-desc">Online platform voor inspraak bij wijkprojecten</div>
+              </td>
+              <td><span class="phase-badge phase-opschaling">Opschaling</span></td>
+              <td><span class="status-dot status-actief"></span></td>
+              <td><span class="horizon-badge">H1</span></td>
+              <td>
+                <span class="hypotheses-count">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M9 11l3 3L22 4"/>
+                  </svg>
+                  6/6
+                </span>
+              </td>
+              <td><span class="meta-text">2 dagen geleden</span></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="initiative-name">Chatbot Klantcontact</div>
+                <div class="initiative-desc">Automatische beantwoording van veelgestelde vragen</div>
+              </td>
+              <td><span class="phase-badge phase-verkenning">Verkenning</span></td>
+              <td><span class="status-dot status-actief"></span></td>
+              <td><span class="horizon-badge">H3</span></td>
+              <td>
+                <span class="hypotheses-count">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M9 11l3 3L22 4"/>
+                  </svg>
+                  0/2
+                </span>
+              </td>
+              <td><span class="meta-text">3 dagen geleden</span></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="initiative-name">Blockchain grondzaken</div>
+                <div class="initiative-desc">Gedistribueerde administratie van eigendomsrechten</div>
+              </td>
+              <td><span class="phase-badge phase-gestopt">Gestopt</span></td>
+              <td><span class="status-dot status-gestopt"></span></td>
+              <td><span class="horizon-badge">H3</span></td>
+              <td>
+                <span class="hypotheses-count">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M9 11l3 3L22 4"/>
+                  </svg>
+                  1/3
+                </span>
+              </td>
+              <td><span class="meta-text">1 week geleden</span></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="initiative-name">Sensoren luchtkwaliteit</div>
+                <div class="initiative-desc">Real-time monitoring van fijnstof in de binnenstad</div>
+              </td>
+              <td><span class="phase-badge phase-pilot">Pilot</span></td>
+              <td><span class="status-dot status-on-hold"></span></td>
+              <td><span class="horizon-badge">H2</span></td>
+              <td>
+                <span class="hypotheses-count">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M9 11l3 3L22 4"/>
+                  </svg>
+                  3/4
+                </span>
+              </td>
+              <td><span class="meta-text">2 weken geleden</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Initiatieven screen -->
+      <div class="screen" id="screen-initiatieven">
+        <header class="page-header">
+          <div>
+            <h1 class="page-title">Initiatieven</h1>
+            <p class="page-subtitle">Alle geregistreerde innovatie-initiatieven</p>
+          </div>
+          <div class="header-actions">
+            <div class="search-bar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="M21 21l-4.35-4.35"/>
+              </svg>
+              <input type="text" placeholder="Zoeken...">
+            </div>
+            <div class="view-toggle">
+              <button class="view-toggle-btn" title="Tabel">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M3 6h18M3 12h18M3 18h18"/>
+                </svg>
+              </button>
+              <button class="view-toggle-btn active" title="Kaarten">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <rect x="3" y="3" width="7" height="7"/>
+                  <rect x="14" y="3" width="7" height="7"/>
+                  <rect x="3" y="14" width="7" height="7"/>
+                  <rect x="14" y="14" width="7" height="7"/>
+                </svg>
+              </button>
+            </div>
+            <button class="btn btn-primary" onclick="openModal('new-initiative')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+              Nieuw initiatief
+            </button>
+          </div>
+        </header>
+
+        <div class="filters-row">
+          <button class="filter-chip active">Alle (24)</button>
+          <button class="filter-chip">Verkenning (4)</button>
+          <button class="filter-chip">Experiment (8)</button>
+          <button class="filter-chip">Pilot (6)</button>
+          <button class="filter-chip">Opschaling (3)</button>
+          <button class="filter-chip">Gestopt (3)</button>
+        </div>
+
+        <div class="cards-grid">
+          <div class="initiative-card" onclick="openDetail()">
+            <div class="card-header">
+              <span class="card-title">AI-gestuurde vergunningencheck</span>
+              <span class="phase-badge phase-pilot">Pilot</span>
+            </div>
+            <p class="card-description">Automatische pre-screening van vergunningsaanvragen met behulp van machine learning om doorlooptijd te verkorten.</p>
+            <div class="card-meta">
+              <span class="card-meta-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M9 11l3 3L22 4"/>
+                </svg>
+                4/5 hypothesen
+              </span>
+              <span class="horizon-badge">H2</span>
+              <span class="card-meta-item">
+                <span class="status-dot status-actief"></span>
+                Actief
+              </span>
+            </div>
+          </div>
+
+          <div class="initiative-card">
+            <div class="card-header">
+              <span class="card-title">Slimme verkeerslichten Breestraat</span>
+              <span class="phase-badge phase-experiment">Experiment</span>
+            </div>
+            <p class="card-description">Dynamische verkeersregeling op basis van real-time drukte-metingen en voorspellingen.</p>
+            <div class="card-meta">
+              <span class="card-meta-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M9 11l3 3L22 4"/>
+                </svg>
+                2/3 hypothesen
+              </span>
+              <span class="horizon-badge">H2</span>
+              <span class="card-meta-item">
+                <span class="status-dot status-actief"></span>
+                Actief
+              </span>
+            </div>
+          </div>
+
+          <div class="initiative-card">
+            <div class="card-header">
+              <span class="card-title">Digitale buurtparticipatie</span>
+              <span class="phase-badge phase-opschaling">Opschaling</span>
+            </div>
+            <p class="card-description">Online platform voor inspraak bij wijkprojecten. Na succesvolle pilot nu uitrol naar alle wijken.</p>
+            <div class="card-meta">
+              <span class="card-meta-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M9 11l3 3L22 4"/>
+                </svg>
+                6/6 hypothesen
+              </span>
+              <span class="horizon-badge">H1</span>
+              <span class="card-meta-item">
+                <span class="status-dot status-actief"></span>
+                Actief
+              </span>
+            </div>
+          </div>
+
+          <div class="initiative-card">
+            <div class="card-header">
+              <span class="card-title">Blockchain grondzaken</span>
+              <span class="phase-badge phase-gestopt">Gestopt</span>
+            </div>
+            <p class="card-description">Gedistribueerde administratie van eigendomsrechten. Gestopt wegens hoge onderhoudskosten.</p>
+            <div class="card-meta">
+              <span class="card-meta-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M9 11l3 3L22 4"/>
+                </svg>
+                1/3 hypothesen
+              </span>
+              <span class="horizon-badge">H3</span>
+              <span class="card-meta-item">
+                <span class="status-dot status-gestopt"></span>
+                Gestopt
+              </span>
+            </div>
+          </div>
+
+          <div class="initiative-card">
+            <div class="card-header">
+              <span class="card-title">Chatbot Klantcontact</span>
+              <span class="phase-badge phase-verkenning">Verkenning</span>
+            </div>
+            <p class="card-description">Automatische beantwoording van veelgestelde vragen via chat. In verkenningsfase.</p>
+            <div class="card-meta">
+              <span class="card-meta-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M9 11l3 3L22 4"/>
+                </svg>
+                0/2 hypothesen
+              </span>
+              <span class="horizon-badge">H3</span>
+              <span class="card-meta-item">
+                <span class="status-dot status-actief"></span>
+                Actief
+              </span>
+            </div>
+          </div>
+
+          <div class="initiative-card">
+            <div class="card-header">
+              <span class="card-title">Sensoren luchtkwaliteit</span>
+              <span class="phase-badge phase-pilot">Pilot</span>
+            </div>
+            <p class="card-description">Real-time monitoring van fijnstof en NO2 in de binnenstad met IoT-sensoren.</p>
+            <div class="card-meta">
+              <span class="card-meta-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M9 11l3 3L22 4"/>
+                </svg>
+                3/4 hypothesen
+              </span>
+              <span class="horizon-badge">H2</span>
+              <span class="card-meta-item">
+                <span class="status-dot status-on-hold"></span>
+                On hold
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Curaties screen -->
+      <div class="screen" id="screen-curaties">
+        <header class="page-header">
+          <div>
+            <h1 class="page-title">Curaties</h1>
+            <p class="page-subtitle">Samengestelde collecties van initiatieven</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn btn-primary" onclick="openModal('new-curation')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+              Nieuwe curatie
+            </button>
+          </div>
+        </header>
+
+        <div class="curation-grid">
+          <div class="curation-card">
+            <h3 class="curation-title">Q4 Directie Update</h3>
+            <p class="curation-description">Voortgangsoverzicht van alle actieve pilots en experimenten voor de directievergadering.</p>
+            <div class="curation-meta">
+              <span>8 initiatieven</span>
+              <span>•</span>
+              <span>Laatst bijgewerkt: vandaag</span>
+            </div>
+          </div>
+
+          <div class="curation-card">
+            <h3 class="curation-title">Show & Tell November</h3>
+            <p class="curation-description">Selectie van recent afgeronde experimenten en hun leeruitkomsten.</p>
+            <div class="curation-meta">
+              <span>4 initiatieven</span>
+              <span>•</span>
+              <span>Laatst bijgewerkt: gisteren</span>
+            </div>
+          </div>
+
+          <div class="curation-card">
+            <h3 class="curation-title">Smart City Initiatieven</h3>
+            <p class="curation-description">Alle initiatieven gerelateerd aan sensoren, IoT en data-gedreven besluitvorming.</p>
+            <div class="curation-meta">
+              <span>6 initiatieven</span>
+              <span>•</span>
+              <span>Laatst bijgewerkt: 3 dagen geleden</span>
+            </div>
+          </div>
+
+          <div class="curation-card">
+            <h3 class="curation-title">Gestopte Projecten 2024</h3>
+            <p class="curation-description">Overzicht van alle gestopte initiatieven dit jaar met hun belangrijkste leeruitkomsten.</p>
+            <div class="curation-meta">
+              <span>5 initiatieven</span>
+              <span>•</span>
+              <span>Laatst bijgewerkt: 1 week geleden</span>
+            </div>
+          </div>
+
+          <div class="curation-card">
+            <h3 class="curation-title">AI & Automatisering</h3>
+            <p class="curation-description">Alle initiatieven die gebruik maken van kunstmatige intelligentie of automatisering.</p>
+            <div class="curation-meta">
+              <span>7 initiatieven</span>
+              <span>•</span>
+              <span>Laatst bijgewerkt: 2 weken geleden</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Detail panel -->
+  <aside class="detail-panel" id="detail-panel">
+    <div class="detail-header">
+      <h2 class="detail-title">AI-gestuurde vergunningencheck</h2>
+      <button class="detail-close" onclick="closeDetail()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="detail-content">
+      <div class="detail-section">
+        <div class="detail-section-title">Algemeen</div>
+        <div class="detail-field">
+          <div class="detail-label">Beschrijving</div>
+          <div class="detail-value">Automatische pre-screening van vergunningsaanvragen met behulp van machine learning om doorlooptijd te verkorten en de kwaliteit van eerste beoordeling te verhogen.</div>
+        </div>
+        <div class="detail-field">
+          <div class="detail-badges">
+            <span class="phase-badge phase-pilot">Pilot</span>
+            <span class="horizon-badge">H2</span>
+          </div>
+        </div>
+        <div class="detail-field">
+          <div class="detail-label">Eigenaar</div>
+          <div class="detail-value">Team Digitale Innovatie</div>
+        </div>
+        <div class="detail-field">
+          <div class="detail-label">Gestart</div>
+          <div class="detail-value">12 maart 2024</div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-section-title">Hypothesen (4/5 getoetst)</div>
+        <div class="hypothesis-list">
+          <div class="hypothesis-item">
+            <div class="hypothesis-header">
+              <span class="hypothesis-type type-value">Value</span>
+              <span class="hypothesis-status">Bevestigd</span>
+            </div>
+            <p class="hypothesis-text">AI-screening kan 60% van de aanvragen correct classificeren zonder menselijke tussenkomst.</p>
+            <div class="hypothesis-outcome">
+              <div class="hypothesis-outcome-label">Leeruitkomst</div>
+              <p class="hypothesis-outcome-text">Na 3 maanden pilot: 67% correct geclassificeerd. Belangrijke nuance: werkt beter voor eenvoudige aanvragen (>80%) dan complexe (<45%).</p>
+            </div>
+          </div>
+          <div class="hypothesis-item">
+            <div class="hypothesis-header">
+              <span class="hypothesis-type type-growth">Growth</span>
+              <span class="hypothesis-status">Bevestigd</span>
+            </div>
+            <p class="hypothesis-text">Medewerkers accepteren AI-suggesties als de confidence score >85% is.</p>
+            <div class="hypothesis-outcome">
+              <div class="hypothesis-outcome-label">Leeruitkomst</div>
+              <p class="hypothesis-outcome-text">Acceptatiegraad 78% bij scores >85%. Bij lagere scores daalt dit naar 34%. Training verhoogt acceptatie met 15 procentpunt.</p>
+            </div>
+          </div>
+          <div class="hypothesis-item">
+            <div class="hypothesis-header">
+              <span class="hypothesis-type type-compliance">Compliance</span>
+              <span class="hypothesis-status">Weerlegd</span>
+            </div>
+            <p class="hypothesis-text">Bestaande AVG-afspraken zijn voldoende voor dit type verwerking.</p>
+            <div class="hypothesis-outcome refuted">
+              <div class="hypothesis-outcome-label">Leeruitkomst</div>
+              <p class="hypothesis-outcome-text">DPIA vereist aanvullende maatregelen: explainability-logging, menselijke override, en 6-maandelijkse audit.</p>
+            </div>
+          </div>
+          <div class="hypothesis-item">
+            <div class="hypothesis-header">
+              <span class="hypothesis-type type-value">Value</span>
+              <span class="hypothesis-status">Bevestigd</span>
+            </div>
+            <p class="hypothesis-text">Doorlooptijd daalt met minimaal 20% door automatische pre-screening.</p>
+            <div class="hypothesis-outcome">
+              <div class="hypothesis-outcome-label">Leeruitkomst</div>
+              <p class="hypothesis-outcome-text">Gemiddelde doorlooptijd daalde van 12 naar 8 werkdagen (-33%). Grootste winst bij standaard-aanvragen.</p>
+            </div>
+          </div>
+          <div class="hypothesis-item">
+            <div class="hypothesis-header">
+              <span class="hypothesis-type type-growth">Growth</span>
+              <span class="hypothesis-status">Nog niet getoetst</span>
+            </div>
+            <p class="hypothesis-text">Het systeem is schaalbaar naar andere vergunningtypes zonder significante herontwikkeling.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-section-title">Dossier</div>
+        <div class="dossier-list">
+          <div class="dossier-item">
+            <div class="dossier-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                <path d="M14 2v6h6"/>
+              </svg>
+            </div>
+            <div class="dossier-info">
+              <div class="dossier-name">Pilot-evaluatie Q3 2024.pdf</div>
+              <div class="dossier-meta">2.3 MB • Toegevoegd 15 okt 2024</div>
+            </div>
+          </div>
+          <div class="dossier-item">
+            <div class="dossier-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                <path d="M14 2v6h6"/>
+              </svg>
+            </div>
+            <div class="dossier-info">
+              <div class="dossier-name">DPIA-rapport versie 2.pdf</div>
+              <div class="dossier-meta">890 KB • Toegevoegd 3 sep 2024</div>
+            </div>
+          </div>
+          <div class="dossier-item">
+            <div class="dossier-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
+              </svg>
+            </div>
+            <div class="dossier-info">
+              <div class="dossier-name">Notitie: stakeholder-feedback</div>
+              <div class="dossier-meta">Toegevoegd 28 aug 2024</div>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-secondary" style="margin-top: 12px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          Toevoegen aan dossier
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- New initiative modal -->
+  <div class="modal-overlay" id="modal-new-initiative">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Nieuw initiatief</h2>
+        <button class="modal-close" onclick="closeModal('new-initiative')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-field">
+          <label class="form-label form-label-required">Titel</label>
+          <input type="text" class="form-input" placeholder="Geef het initiatief een duidelijke naam">
+        </div>
+        <div class="form-field">
+          <label class="form-label">Beschrijving</label>
+          <textarea class="form-textarea" placeholder="Beschrijf kort waar dit initiatief over gaat"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-label form-label-required">Fase</label>
+            <select class="form-select">
+              <option value="">Selecteer fase</option>
+              <option value="verkenning">Verkenning</option>
+              <option value="experiment">Experiment</option>
+              <option value="pilot">Pilot</option>
+              <option value="opschaling">Opschaling</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="form-label">Horizon</label>
+            <select class="form-select">
+              <option value="">Selecteer horizon</option>
+              <option value="h1">H1 — Nu optimaliseren</option>
+              <option value="h2">H2 — Komende jaren uitbouwen</option>
+              <option value="h3">H3 — Toekomst verkennen</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Eigenaar / team</label>
+          <input type="text" class="form-input" placeholder="Wie is verantwoordelijk voor dit initiatief?">
+        </div>
+        <div class="form-field">
+          <label class="form-label">MDS-link</label>
+          <input type="text" class="form-input" placeholder="Optioneel: link naar MDS-dossier">
+          <div class="form-hint">Koppel dit initiatief aan een bestaand MDS-dossier</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('new-initiative')">Annuleren</button>
+        <button class="btn btn-primary">Initiatief aanmaken</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- New curation modal -->
+  <div class="modal-overlay" id="modal-new-curation">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Nieuwe curatie</h2>
+        <button class="modal-close" onclick="closeModal('new-curation')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-field">
+          <label class="form-label form-label-required">Naam</label>
+          <input type="text" class="form-input" placeholder="Geef de curatie een naam">
+        </div>
+        <div class="form-field">
+          <label class="form-label">Beschrijving</label>
+          <textarea class="form-textarea" placeholder="Beschrijf het doel van deze curatie"></textarea>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Initiatieven toevoegen</label>
+          <div class="form-hint">Je kunt na aanmaken initiatieven aan de curatie toevoegen.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('new-curation')">Annuleren</button>
+        <button class="btn btn-primary">Curatie aanmaken</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Navigation
+    document.querySelectorAll('.nav-item[data-screen]').forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.preventDefault();
+        const screen = item.dataset.screen;
+
+        // Update nav
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        item.classList.add('active');
+
+        // Update screens
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById('screen-' + screen).classList.add('active');
+
+        // Close detail panel
+        closeDetail();
+
+        // Save to localStorage
+        localStorage.setItem('activeScreen', screen);
+      });
+    });
+
+    // Restore screen from localStorage
+    const savedScreen = localStorage.getItem('activeScreen');
+    if (savedScreen) {
+      const navItem = document.querySelector(`.nav-item[data-screen="${savedScreen}"]`);
+      if (navItem) navItem.click();
+    }
+
+    // Detail panel
+    function openDetail() {
+      document.getElementById('detail-panel').classList.add('open');
+    }
+
+    function closeDetail() {
+      document.getElementById('detail-panel').classList.remove('open');
+    }
+
+    // Modals
+    function openModal(id) {
+      document.getElementById('modal-' + id).classList.add('open');
+    }
+
+    function closeModal(id) {
+      document.getElementById('modal-' + id).classList.remove('open');
+    }
+
+    // Close modal on overlay click
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          overlay.classList.remove('open');
+        }
+      });
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      // Escape closes modals and detail panel
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+        closeDetail();
+      }
+
+      // Cmd+K focuses search
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        document.querySelector('.search-bar input').focus();
+      }
+    });
+
+    // Filter chips
+    document.querySelectorAll('.filter-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const row = chip.parentElement;
+        row.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+      });
+    });
+
+    // View toggle
+    document.querySelectorAll('.view-toggle-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const toggle = btn.parentElement;
+        toggle.querySelectorAll('.view-toggle-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>

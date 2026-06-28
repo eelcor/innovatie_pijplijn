@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}{{ tag.name }} — Tags — Innovatiepijplijn{% endblock %}
+
+{% set active_page = 'tags' %}
+
+{% block content %}
+<header class="page-header">
+  <div>
+    <button onclick="window.history.back()" style="color: var(--muted); text-decoration: none; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; margin-bottom: 8px; background: none; border: none; cursor: pointer; padding: 0; font-family: inherit;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+      </svg>
+      Terug
+    </button>
+    <h1 class="page-title">{{ tag.name }}</h1>
+    {% if tag.description %}
+    <p class="page-subtitle">{{ tag.description }}</p>
+    {% else %}
+    <p class="page-subtitle">Tag-detail — alle gekoppelde initiatieven en centrale vragen</p>
+    {% endif %}
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-secondary" onclick="openModal('edit-tag')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+        <path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+      Hernoemen
+    </button>
+    <button class="btn btn-secondary" onclick="softDeleteTag('{{ tag.id }}')" style="border-color: var(--stopped); color: var(--stopped);">
+      Inactief zetten
+    </button>
+  </div>
+</header>
+
+<!-- Initiatieven met deze tag -->
+<section style="margin-bottom: 32px;">
+  <h2 style="font-size: 14px; font-weight: 600; margin-bottom: 12px;">Initiatieven ({{ initiatives|length }})</h2>
+  {% if initiatives %}
+  <div class="cards-grid">
+    {% for i in initiatives %}
+    <a href="/api/initiatieven/detail/{{ i.id }}" class="initiative-card">
+      <div class="card-header">
+        <span class="card-title">{{ i.title }}</span>
+        <span class="phase-badge phase-{{ 'gestopt' if i.status == 'gestopt' else i.phase }}">{{ phaseLabel(i.phase) }}</span>
+      </div>
+      {% if i.description %}
+      <p class="card-description">{{ i.description[:120] }}{% if i.description|length > 120 %}...{% endif %}</p>
+      {% endif %}
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div style="padding: 24px; text-align: center; color: var(--muted); font-size: 13px;">Geen initiatieven met deze tag.</div>
+  {% endif %}
+</section>
+
+<!-- Centrale vragen met deze tag -->
+<section>
+  <h2 style="font-size: 14px; font-weight: 600; margin-bottom: 12px;">Centrale vragen ({{ questions|length }})</h2>
+  {% if questions %}
+  <div class="cards-grid">
+    {% for q in questions %}
+    <a href="/api/vragen/detail/{{ q.id }}" class="initiative-card">
+      <div class="card-header">
+        <span class="card-title">{{ q.question }}</span>
+      </div>
+      {% if q.description %}
+      <p class="card-description">{{ q.description[:120] }}{% if q.description|length > 120 %}...{% endif %}</p>
+      {% endif %}
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div style="padding: 24px; text-align: center; color: var(--muted); font-size: 13px;">Geen centrale vragen met deze tag.</div>
+  {% endif %}
+</section>
+
+<!-- Edit tag modal -->
+<div class="modal-overlay" id="modal-edit-tag">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">Tag hernoemen</h2>
+      <button class="modal-close" onclick="closeModal('edit-tag')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <form id="form-edit-tag">
+      <div class="modal-body">
+        <div class="form-field">
+          <label class="form-label form-label-required">Naam</label>
+          <input type="text" name="name" class="form-input" value="{{ tag.name }}" required>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Beschrijving</label>
+          <textarea name="description" class="form-textarea" placeholder="Waar gaat deze tag over? (wordt gebruikt door AI-suggesties)" style="min-height: 80px;">{{ tag.description or '' }}</textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('edit-tag')">Annuleren</button>
+        <button type="submit" class="btn btn-primary">Opslaan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const tagId = '{{ tag.id }}';
+
+document.getElementById('form-edit-tag').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const data = {};
+  formData.forEach((value, key) => { if (value) data[key] = value; });
+
+  try {
+    await apiCall('/api/tags/' + tagId, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    closeModal('edit-tag');
+    showToast('Tag hernoemd');
+    location.reload();
+  } catch (err) {
+    console.error(err);
+  }
+});
+
+async function softDeleteTag(id) {
+  if (!confirm('Deze tag inactief zetten? Koppelingen blijven behouden.')) return;
+  try {
+    await apiCall('/api/tags/' + id, {
+      method: 'DELETE',
+    });
+    showToast('Tag inactief gezet');
+    location.reload();
+  } catch (err) {
+    console.error(err);
+  }
+}
+</script>
+{% endblock %}

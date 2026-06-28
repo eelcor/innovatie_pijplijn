@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Innovatiepijplijn — Gemeente Leiden</title>
+  <style>
+    :root {
+      --bg: oklch(99% 0.002 240);
+      --surface: oklch(100% 0 0);
+      --fg: oklch(18% 0.012 240);
+      --muted: oklch(50% 0.012 240);
+      --border: oklch(88% 0.004 240);
+      --accent: oklch(50% 0.18 25);
+
+      --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+      --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--surface);
+      color: var(--fg);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+    }
+
+    .container {
+      max-width: 720px;
+      width: 100%;
+    }
+
+    .header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 32px;
+      margin-bottom: 48px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .logo-mark {
+      width: 40px;
+      height: 40px;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo-mark svg {
+      width: 22px;
+      height: 22px;
+      color: white;
+    }
+
+    .logo-text {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .tagline {
+      font-size: 15px;
+      color: var(--muted);
+      line-height: 1.6;
+      max-width: 480px;
+    }
+
+    .screens {
+      display: grid;
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+    }
+
+    .screen-link {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 24px;
+      padding: 24px;
+      background: var(--surface);
+      text-decoration: none;
+      transition: background 0.1s;
+    }
+
+    .screen-link:hover {
+      background: var(--bg);
+    }
+
+    .screen-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .screen-title {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--fg);
+      letter-spacing: -0.01em;
+    }
+
+    .screen-description {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .screen-meta {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .screen-file {
+      font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--bg);
+      padding: 4px 8px;
+      border: 1px solid var(--border);
+    }
+
+    .screen-arrow {
+      width: 20px;
+      height: 20px;
+      color: var(--muted);
+    }
+
+    .screen-link:hover .screen-arrow {
+      color: var(--fg);
+    }
+
+    @media (max-width: 600px) {
+      .screen-link {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .screen-meta {
+        justify-content: space-between;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="logo">
+        <div class="logo-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+            <path d="M2 17l10 5 10-5"/>
+            <path d="M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <span class="logo-text">Innovatiepijplijn</span>
+      </div>
+      <p class="tagline">Registratie- en analysetool voor innovatie-initiatieven van de gemeente Leiden.</p>
+    </header>
+
+    <nav class="screens">
+      <a href="landing.html" class="screen-link">
+        <div class="screen-info">
+          <span class="screen-title">Landingspagina</span>
+          <span class="screen-description">Marketing-pagina met uitleg over de functionaliteit en werkwijze.</span>
+        </div>
+        <div class="screen-meta">
+          <span class="screen-file">landing.html</span>
+          <svg class="screen-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </div>
+      </a>
+
+      <a href="app.html" class="screen-link">
+        <div class="screen-info">
+          <span class="screen-title">Applicatie</span>
+          <span class="screen-description">Dashboard, initiatieven, curaties en alle interactieve schermen.</span>
+        </div>
+        <div class="screen-meta">
+          <span class="screen-file">app.html</span>
+          <svg class="screen-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </div>
+      </a>
+    </nav>
+  </div>
+</body>
+</html>
