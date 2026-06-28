@@ -16,6 +16,7 @@ from datetime import timedelta
 from typing import Callable
 
 from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
 # Cookie naam voor CSRF token
@@ -44,6 +45,10 @@ class CSRFMiddleware(BaseHTTPMiddleware):
     EXEMPT_PATHS = {
         "/api/auth/login",
         "/api/auth/logout",
+        "/api/auth/csrf-token",
+        "/api/auth/me",
+        "/api/auth/users",
+        "/login",
         "/health",
     }
 
@@ -108,6 +113,7 @@ def get_csrf_token(request: Request) -> str:
 
 # Endpoint om een CSRF token te halen (voor API clients zonder cookie support)
 from fastapi import APIRouter
+from starlette.responses import RedirectResponse
 
 router = APIRouter()
 
@@ -130,3 +136,61 @@ async def csrf_token_endpoint(request: Request, response: Response):
             path="/",
         )
     return {"csrf_token": token}
+
+
+class AuthMiddleware(BaseHTTPMiddleware):
+    """Authenticatie middleware — redirect naar /login als niet ingelogd.
+
+    - HTML requests: 302 redirect naar /login?redirect=...
+    - API requests: 401 JSON response
+    - Test modus: geen authenticatie vereist
+    """
+
+    # Routes die geen authenticatie nodig hebben
+    EXEMPT_PATHS = {
+        "/api/auth/login",
+        "/api/auth/logout",
+        "/api/auth/csrf-token",
+        "/api/auth/me",
+        "/login",
+        "/health",
+    }
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        path = request.url.path
+
+        # Test modus: geen authenticatie vereist
+        if os.environ.get("TESTING", "false").lower() == "true":
+            return await call_next(request)
+
+        # Vrijgestelde routes overslaan
+        if path in self.EXEMPT_PATHS:
+            return await call_next(request)
+
+        # Static files en uploads overslaan
+        if path.startswith("/static/") or path.startswith("/api/dossier/download/"):
+            return await call_next(request)
+
+        # Check sessie cookie
+        session_cookie = request.cookies.get("session")
+        if not session_cookie:
+            # Bepaal of het een API of HTML request is
+            accept_header = request.headers.get("accept", "")
+            is_api = path.startswith("/api/")
+            is_html = "text/html" in accept_header or (not is_api and "application/json" not in accept_header)
+
+            # Bepaal redirect URL
+            current_path = request.url.path
+            if request.query_params:
+                current_path += "?" + str(request.query_params)
+            login_redirect = f"/login?redirect={current_path}"
+
+            if is_html:
+                return RedirectResponse(url=login_redirect, status_code=302)
+            else:
+                return JSONResponse(
+                    status_code=401,
+                    content={"detail": "Authenticatie vereist — log in via /api/auth/login"},
+                )
+
+        return await call_next(request)

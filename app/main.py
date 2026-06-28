@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 from app.auth import ensure_admin_user, router as auth_router, require_admin
-from app.csrf import CSRFMiddleware, router as csrf_router
+from app.csrf import CSRFMiddleware, AuthMiddleware, router as csrf_router
 from app.database import init_db, get_db, DB_PATH
 from app.helpers import BASE_DIR, templates
 from app.models import DossierFile, User
@@ -89,6 +89,9 @@ app = FastAPI(
 
 # CSRF middleware — beschermt alle POST/PUT/DELETE/PATCH routes
 app.add_middleware(CSRFMiddleware)
+
+# Auth middleware — redirect naar /login als niet ingelogd
+app.add_middleware(AuthMiddleware)
 
 # Static files
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "app", "static")), name="static")

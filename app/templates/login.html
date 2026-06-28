@@ -200,7 +200,10 @@ document.getElementById('login-form').addEventListener('submit', async function(
       const data = await resp.json();
       statusEl.style.color = 'var(--success)';
       statusEl.textContent = `Welkom, ${data.username}! (${data.role}) — doorverwijzen...`;
-      setTimeout(() => window.location.href = '/', 800);
+      // Gebruik redirect parameter als die er is
+      const params = new URLSearchParams(window.location.search);
+      const redirectTo = params.get('redirect') || '/';
+      setTimeout(() => window.location.href = redirectTo, 800);
     } else {
       const err = await resp.json();
       statusEl.style.color = 'var(--stopped)';
