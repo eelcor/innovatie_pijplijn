@@ -46,13 +46,27 @@ async def lifespan(app: FastAPI):
     finally:
         db_admin.close()
 
+    # Laad admin config en update ai_client (admin config heeft prioriteit)
+    try:
+        from app.admin_config import get_ai_config_for_client
+        from app import ai_client
+        ai_cfg = get_ai_config_for_client()
+        if ai_cfg["MODEL_URL"]:
+            ai_client.MODEL_URL = ai_cfg["MODEL_URL"]
+            ai_client.MODEL_NAME = ai_cfg["MODEL_NAME"]
+            ai_client.MODEL_API_KEY = ai_cfg["MODEL_API_KEY"]
+            ai_client.AI_ENABLED = ai_cfg["AI_ENABLED"]
+            ai_client.REQUEST_TIMEOUT = ai_cfg["REQUEST_TIMEOUT"]
+            logger.info(f"Admin config geladen: model={ai_cfg['MODEL_NAME']}, url={ai_cfg['MODEL_URL']}")
+    except Exception as e:
+        logger.warning(f"Kon admin config niet laden (geen probleem bij eerste start): {e}")
+
     # Startup validatie en logging
     logger.info("Innovatiepijplijn start-up")
     logger.info(f"Database: {DB_PATH}")
     logger.info(f"App environment: {os.environ.get('APP_ENV', 'development')}")
     logger.info(f"AI enabled: {os.environ.get('AI_ENABLED', 'true').lower() == 'true'}")
 
-    from app import ai_client
     if ai_client.AI_ENABLED:
         if not ai_client.MODEL_URL:
             logger.warning("AI is ingeschakeld maar MODEL_URL is niet ingesteld — AI features zullen falen")
