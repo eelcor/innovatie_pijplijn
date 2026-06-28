@@ -53,7 +53,8 @@ algemeer genoeg zodat ze realistisch zijn op basis van de beschikbare informatie
 - Als de context te weinig informatie bevat, geef dan algemene hypothesen die passen \
 bij het type initiatief, maar noem geen specifieke details die je zelf bedacht hebt.
 
-Geef je antwoord als JSON-array met objecten die elk velden hebben:
+Geef je antwoord als JSON-array met **minimaal 9 hypothesen** (3-4 per beschikbare categorie).
+Elk object heeft velden:
 type (value/growth/compliance), description (een duidelijke hypothese in het Nederlands),
 en rationale (korte toelichting waarom deze hypothese relevant is)."""
 
@@ -298,11 +299,11 @@ async def suggest_hypotheses_api(
 
     if type_hints:
         prompt_parts.append(
-            f"Stel nieuwe hypothesen voor, bij voorkeur in de categorieën: {', '.join(type_hints)}. "
-            "Vermijd duplicaten van bestaande hypothesen."
+            f"Stel 3-4 nieuwe hypothesen per categorie voor, bij voorkeur in de categorieën: {', '.join(type_hints)}. "
+            "Dus minimaal 9 hypothesen in totaal. Vermijd duplicaten van bestaande hypothesen."
         )
     else:
-        prompt_parts.append("Stel aanvullende hypothesen voor. Vermijd duplicaten.")
+        prompt_parts.append("Stel 9-12 aanvullende hypothesen voor, verdeeld over value, growth en compliance. Vermijd duplicaten.")
 
     prompt_parts.append(
         "\nBELANGRIJK: Gebruik alleen de informatie hierboven. Verzin geen nieuwe feiten, "
@@ -315,8 +316,10 @@ async def suggest_hypotheses_api(
         system_prompt=SYSTEM_PROMPT_HYPOTHESEN,
         user_prompt=user_prompt,
         temperature=0.3,
-        max_tokens=8192,
+        max_tokens=16384,  # meer ruimte voor 9-12 hypothesen
     )
+    # Timeout handling: als het model te lang doet over veel hypothesen,
+    # kunnen we de timeout verhogen via AI_REQUEST_TIMEOUT environment variabele
 
     if isinstance(result, dict) and "error" in result:
         return {"success": False, "error": result["error"], "suggestions": []}
