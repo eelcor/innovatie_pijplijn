@@ -1008,6 +1008,29 @@
           Nieuw initiatief
         </button>
       </nav>
+
+      <!-- User section (bottom of sidebar) -->
+      <div class="user-section" id="user-section" style="margin-top:auto; padding-top:16px; border-top:1px solid var(--border);">
+        <div class="user-info" id="user-info" style="display:flex; align-items:center; gap:8px; padding:4px 0; font-size:13px; color:var(--muted);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:16px;height:16px;flex-shrink:0;">
+            <circle cx="12" cy="8" r="4"/>
+            <path d="M4 20c0-4 4-7 8-7s8 3 8 7"/>
+          </svg>
+          <span id="user-username">...</span>
+        </div>
+        <a href="/login" class="nav-item" id="login-link" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/>
+          </svg>
+          Inloggen
+        </a>
+        <button class="nav-item" id="logout-btn" onclick="doLogout()" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
+          </svg>
+          Uitloggen
+        </button>
+      </div>
     </aside>
 
     <!-- Main content -->
@@ -1252,12 +1275,40 @@
       return labels[h] || h;
     }
 
-    // API helper
+    // CSRF token
+    let csrfToken = null;
+
+    async function getCsrfToken() {
+      if (csrfToken) return csrfToken;
+      try {
+        const resp = await fetch('/api/auth/csrf-token');
+        if (resp.ok) {
+          csrfToken = (await resp.json()).csrf_token;
+        }
+      } catch (e) {
+        console.error('CSRF token fetch failed:', e);
+      }
+      return csrfToken;
+    }
+
+    // API helper with CSRF token
     async function apiCall(url, options = {}) {
       const defaults = {
         headers: { 'Content-Type': 'application/json' },
       };
+      // Add CSRF token for mutating methods
+      if (options.method && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(options.method.toUpperCase())) {
+        const token = await getCsrfToken();
+        if (token) {
+          defaults.headers['X-CSRF-Token'] = token;
+        }
+      }
       const response = await fetch(url, { ...defaults, ...options });
+      // Redirect to login on 401
+      if (response.status === 401 && !url.includes('/api/auth/login')) {
+        window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+        throw new Error('Authenticatie vereist');
+      }
       if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: 'Er ging iets mis' }));
         showToast(error.detail || 'Fout bij communicatie');
@@ -1265,6 +1316,45 @@
       }
       return response.json();
     }
+
+    // Check auth state on page load
+    async function checkAuth() {
+      try {
+        const resp = await fetch('/api/auth/me', { credentials: 'same-origin' });
+        if (resp.ok) {
+          const user = await resp.json();
+          document.getElementById('user-username').textContent = user.username + ' (' + user.role + ')';
+          document.getElementById('logout-btn').style.display = 'flex';
+          document.getElementById('login-link').style.display = 'none';
+        } else {
+          // Not logged in - show login link
+          document.getElementById('user-username').textContent = 'Niet ingelogd';
+          document.getElementById('logout-btn').style.display = 'none';
+          document.getElementById('login-link').style.display = 'flex';
+        }
+      } catch (e) {
+        console.error('Auth check failed:', e);
+        document.getElementById('user-username').textContent = 'Niet ingelogd';
+        document.getElementById('logout-btn').style.display = 'none';
+        document.getElementById('login-link').style.display = 'flex';
+      }
+    }
+
+    // Logout function
+    async function doLogout() {
+      try {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          credentials: 'same-origin',
+        });
+      } catch (e) {
+        console.error('Logout failed:', e);
+      }
+      window.location.href = '/login';
+    }
+
+    // Check auth on page load
+    document.addEventListener('DOMContentLoaded', checkAuth);
 
     // HTML-escape helper voor client-side markdown
     function escapeHtml(str) {
