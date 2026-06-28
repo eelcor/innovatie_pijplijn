@@ -337,20 +337,33 @@ class QuestionTag(Base):
     tag = relationship("Tag", back_populates="question_tags")
 
 
-# --- Auth ---
+# --- Auth (RBAC) ---
+
+# Rol-constanten — elke rol erft rechten van lagere rollen
+ROLE_ADMIN = "admin"     # Alles: initiatieven, beheer, backups, gebruikers
+ROLE_EDITOR = "editor"   # Initiatieven CRUD, hypothesen, dossier, curaties, tags, MDS, vragen
+ROLE_VIEWER = "viewer"   # Alleen lezen: dashboard, detailpagina's
+ALL_ROLES = [ROLE_ADMIN, ROLE_EDITOR, ROLE_VIEWER]
 
 class User(Base):
-    """Authenticatie-gebruiker.
+    """Authenticatie-gebruiker met RBAC rollen.
 
-    Eenvoudige sessie-based auth voor lokale/MVP gebruik.
-    Passwords zijn gehashed met bcrypt.
+    Rollen (hoger = meer rechten):
+      - admin:   alles inclusief gebruikersbeheer en backups
+      - editor:  initiatieven CRUD, hypothesen, dossier, curaties, tags, MDS, vragen
+      - viewer:  alleen lezen (dashboard, detailpagina's)
     """
     __tablename__ = "users"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     username = Column(String(100), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)  # bcrypt hash
-    is_admin = Column(Boolean, default=False, nullable=False)
+    role = Column(Enum(*ALL_ROLES, name="user_roles"), default=ROLE_VIEWER, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=func.now(), nullable=False)
     last_login = Column(DateTime, nullable=True)
+
+    @property
+    def is_admin(self) -> bool:
+        """Backward-compatible property — returns True if role is admin."""
+        return self.role == ROLE_ADMIN

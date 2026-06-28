@@ -1,14 +1,14 @@
-"""Authenticatie en autorisatie — sessie-based met bcrypt.
+"""RBAC Authenticatie — sessie-based met bcrypt en rollen.
 
-Werking:
-- Gebruiker logt in via POST /api/auth/login → krijgt session cookie
-- Sessies zijn server-side (gesigneerde cookies via itsdangerous)
-- Auth dependency (`require_auth`) kan worden toegevoegd aan routes
-- Admin dependency (`require_admin`) voor admin-only routes
+Rollen (hoger = meer rechten):
+  - admin:   alles inclusief gebruikersbeheer en backups
+  - editor:  initiatieven CRUD, hypothesen, dossier, curaties, tags, MDS, vragen
+  - viewer:  alleen lezen (dashboard, detailpagina's)
 
 Configuratie:
-  APP_SECRET_KEY — secret voor sessie signing (verplicht, default fallback voor dev)
-  APP_ADMIN_PASSWORD — wachtwoord voor eerste admin-gebruiker (auto-create bij startup)
+  APP_SECRET_KEY    — secret voor sessie signing
+  APP_ADMIN_USERNAME — gebruikersnaam eerste admin (default: "admin")
+  APP_ADMIN_PASSWORD — wachtwoord eerste admin (auto-create bij startup)
 """
 
 import os
@@ -18,19 +18,17 @@ from typing import Optional
 
 import bcrypt
 import itsdangerous
-from fastapi import Body, Cookie, Depends, HTTPException, Request, Response
-from pydantic import BaseModel
+from fastapi import Cookie, Depends, HTTPException, Request, Response
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import User
+from app.models import User, ROLE_ADMIN, ROLE_EDITOR, ROLE_VIEWER, ALL_ROLES
 
 # --- Configuratie ---
 
 SECRET_KEY = os.environ.get("APP_SECRET_KEY", "dev-secret-key-change-in-production")
 SESSION_EXPIRY_HOURS = int(os.environ.get("SESSION_EXPIRY_HOURS", "24"))
-
-
 
 # Serializer voor sessie cookies
 serializer = itsdangerous.URLSafeTimedSerializer(
@@ -58,12 +56,12 @@ def verify_password(password: str, hash_value: str) -> bool:
         return False
 
 
-def create_session_token(user_id: str, username: str, is_admin: bool) -> str:
+def create_session_token(user_id: str, username: str, role: str) -> str:
     """Creëer een gesigneerde sessie token."""
     payload = {
         "user_id": user_id,
         "username": username,
-        "is_admin": is_admin,
+        "role": role,
         "exp": (datetime.utcnow() + timedelta(hours=SESSION_EXPIRY_HOURS)).timestamp(),
         "jti": str(uuid.uuid4()),  # session ID voor revocation
     }
@@ -80,6 +78,17 @@ def decode_session_token(token: str) -> Optional[dict]:
         return payload
     except itsdangerous.BadData:
         return None
+
+
+def has_role(user_role: str, required_role: str) -> bool:
+    """Check of een rol voldoet aan de vereiste.
+
+    Rollen zijn hiërarchisch: admin > editor > viewer
+    """
+    role_hierarchy = {ROLE_ADMIN: 3, ROLE_EDITOR: 2, ROLE_VIEWER: 1}
+    user_level = role_hierarchy.get(user_role, 0)
+    required_level = role_hierarchy.get(required_role, 0)
+    return user_level >= required_level
 
 
 def ensure_admin_user(db: Session) -> None:
@@ -103,7 +112,7 @@ def ensure_admin_user(db: Session) -> None:
     admin_user = User(
         username=admin_username,
         password_hash=hash_password(admin_password),
-        is_admin=True,
+        role=ROLE_ADMIN,
         is_active=True,
     )
     db.add(admin_user)
@@ -114,20 +123,20 @@ def ensure_admin_user(db: Session) -> None:
 # --- FastAPI Dependencies ---
 
 async def get_current_user(
-    session_token: Optional[str] = Cookie(None, alias="session"),
+    session: Optional[str] = Cookie(None, alias="session"),
     db: Session = Depends(get_db),
 ) -> User:
     """Haal de huidige gebruiker op uit de sessie cookie.
 
     Geeft 401 als er geen geldige sessie is.
     """
-    if not session_token:
+    if not session:
         raise HTTPException(
             status_code=401,
             detail="Authenticatie vereist — log in via /api/auth/login",
         )
 
-    payload = decode_session_token(session_token)
+    payload = decode_session_token(session)
     if not payload:
         raise HTTPException(status_code=401, detail="Sessie verlopen of ongeldig")
 
@@ -141,22 +150,29 @@ async def get_current_user(
     return user
 
 
-async def require_admin(
-    current_user: User = Depends(get_current_user),
-) -> User:
-    """Vereist dat de huidige gebruiker admin-rechten heeft.
+def require_role(required_role: str):
+    """Dependency factory — vereist een specifieke rol of hoger.
 
-    Geeft 403 als gebruiker geen admin is.
+    Gebruik:
+        async def my_route(user: User = Depends(require_role(ROLE_EDITOR))):
+            ...
     """
-    if not current_user.is_admin:
-        raise HTTPException(
-            status_code=403,
-            detail="Toegang geweigerd — admin-rechten vereist",
-        )
-    return current_user
+    async def _check(current_user: User = Depends(get_current_user)) -> User:
+        if not has_role(current_user.role, required_role):
+            raise HTTPException(
+                status_code=403,
+                detail=f"Toegang geweigerd — vereiste rol: {required_role}",
+            )
+        return current_user
+    return _check
 
 
-# --- Auth Routes (te importeren in main.py) ---
+# Convenience dependencies voor common role checks
+require_editor = require_role(ROLE_EDITOR)  # async callable, used as Depends(require_editor)
+require_admin = require_role(ROLE_ADMIN)    # async callable, used as Depends(require_admin)
+
+
+# --- Auth Routes ---
 
 from fastapi import APIRouter
 
@@ -165,8 +181,8 @@ router = APIRouter()
 
 class LoginRequest(BaseModel):
     """Login request body."""
-    username: str
-    password: str
+    username: str = Field(..., min_length=1)
+    password: str = Field(..., min_length=1)
 
 
 @router.post("/login")
@@ -175,10 +191,7 @@ async def login(
     response: Response,
     db: Session = Depends(get_db),
 ):
-    """Log in en ontvang een sessie cookie.
-
-    Accepteert JSON body: {"username": "...", "password": "..."}
-    """
+    """Log in en ontvang een sessie cookie."""
     user = db.query(User).filter(
         User.username == data.username,
         User.is_active == True,
@@ -191,7 +204,7 @@ async def login(
     db.commit()
 
     # Creëer sessie cookie
-    token = create_session_token(user.id, user.username, user.is_admin)
+    token = create_session_token(user.id, user.username, user.role)
     response.set_cookie(
         key="session",
         value=token,
@@ -204,7 +217,7 @@ async def login(
     return {
         "message": "Ingelogd",
         "username": user.username,
-        "is_admin": user.is_admin,
+        "role": user.role,
     }
 
 
@@ -233,39 +246,40 @@ async def current_user_info(
     return {
         "id": current_user.id,
         "username": current_user.username,
-        "is_admin": current_user.is_admin,
+        "role": current_user.role,
+        "is_active": current_user.is_active,
         "last_login": current_user.last_login.isoformat() if current_user.last_login else None,
     }
 
 
+class CreateUserRequest(BaseModel):
+    """Gebruiker aanmaken request."""
+    username: str = Field(..., min_length=1, max_length=100)
+    password: str = Field(..., min_length=4, max_length=72)
+    role: str = Field(default=ROLE_VIEWER)
+
+
 @router.post("/users/create")
 async def create_user(
-    data: dict,
+    data: CreateUserRequest,
     db: Session = Depends(get_db),
     admin_user: User = Depends(require_admin),
 ):
-    """Maak een nieuwe gebruiker aan (alleen door admin).
-
-    Accepteert: {"username": "...", "password": "...", "is_admin": false}
-    """
-    username = data.get("username", "").strip()
-    password = data.get("password")
-    is_admin = bool(data.get("is_admin", False))
-
-    if not username or not password:
-        raise HTTPException(status_code=400, detail="Gebruikersnaam en wachtwoord zijn verplicht")
+    """Maak een nieuwe gebruiker aan (alleen door admin)."""
+    if data.role not in ALL_ROLES:
+        raise HTTPException(status_code=400, detail=f"Ongeldige rol — kies uit: {', '.join(ALL_ROLES)}")
 
     # Check of gebruiker al bestaat
     existing = db.query(User).filter(
-        User.username == username
+        User.username == data.username
     ).first()
     if existing:
-        raise HTTPException(status_code=409, detail=f"Gebruiker '{username}' bestaat al")
+        raise HTTPException(status_code=409, detail=f"Gebruiker '{data.username}' bestaat al")
 
     user = User(
-        username=username,
-        password_hash=hash_password(password),
-        is_admin=is_admin,
+        username=data.username,
+        password_hash=hash_password(data.password),
+        role=data.role,
         is_active=True,
     )
     db.add(user)
@@ -275,9 +289,52 @@ async def create_user(
     return {
         "id": user.id,
         "username": user.username,
-        "is_admin": user.is_admin,
+        "role": user.role,
         "message": "Gebruiker aangemaakt",
     }
+
+
+@router.put("/users/{user_id}")
+async def update_user(
+    user_id: str,
+    data: dict,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_admin),
+):
+    """Update een gebruiker (alleen door admin)."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Gebruiker niet gevonden")
+
+    if "role" in data and data["role"] in ALL_ROLES:
+        user.role = data["role"]
+    if "is_active" in data:
+        user.is_active = bool(data["is_active"])
+    if "password" in data and data["password"]:
+        user.password_hash = hash_password(data["password"])
+
+    db.commit()
+    return {"message": "Gebruiker bijgewerkt"}
+
+
+@router.delete("/users/{user_id}")
+async def delete_user(
+    user_id: str,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_admin),
+):
+    """Verwijder een gebruiker (alleen door admin)."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Gebruiker niet gevonden")
+
+    # Voorkom dat admin zichzelf verwijdert
+    if user.id == admin_user.id:
+        raise HTTPException(status_code=400, detail="Je kunt jezelf niet verwijderen")
+
+    db.delete(user)
+    db.commit()
+    return {"message": "Gebruiker verwijderd"}
 
 
 @router.get("/users")
@@ -290,7 +347,7 @@ async def list_users(
     return [{
         "id": u.id,
         "username": u.username,
-        "is_admin": u.is_admin,
+        "role": u.role,
         "is_active": u.is_active,
         "created_at": u.created_at.isoformat() if u.created_at else None,
         "last_login": u.last_login.isoformat() if u.last_login else None,

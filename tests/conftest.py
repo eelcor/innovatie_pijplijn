@@ -67,7 +67,7 @@ def test_db_engine(test_db_path):
 @pytest.fixture(scope="function")
 def mock_user(test_db_engine):
     """Maak een mock admin gebruiker en override auth dependencies."""
-    from app.models import User
+    from app.models import User, ROLE_ADMIN
     from app.auth import hash_password, create_session_token
 
     _, TestSession, _ = test_db_engine
@@ -77,14 +77,14 @@ def mock_user(test_db_engine):
         id=str(uuid.uuid4()),
         username="testadmin",
         password_hash=hash_password("testpassword"),
-        is_admin=True,
+        role=ROLE_ADMIN,
         is_active=True,
     )
     session.add(user)
     session.commit()
     session.refresh(user)
 
-    token = create_session_token(user.id, user.username, user.is_admin)
+    token = create_session_token(user.id, user.username, user.role)
 
     yield user, token
 

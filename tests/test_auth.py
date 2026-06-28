@@ -18,7 +18,7 @@ class TestAuthLogin:
         assert response.status_code == 200
         data = response.json()
         assert data["username"] == "testadmin"
-        assert data["is_admin"] is True
+        assert data["role"] == "admin"
 
     async def test_login_with_wrong_password(self, auth_client):
         """Login met verkeerd wachtwoord geeft 401."""
@@ -47,7 +47,7 @@ class TestAuthLogin:
         assert response.status_code == 200
         data = response.json()
         assert "username" in data
-        assert "is_admin" in data
+        assert "role" in data
 
 
 class TestAuthCreateUser:
@@ -60,13 +60,13 @@ class TestAuthCreateUser:
             json={
                 "username": "nieuwe_gebruiker",
                 "password": "geheim123",
-                "is_admin": False,
+                "role": "viewer",
             },
         )
         assert response.status_code == 200
         data = response.json()
         assert data["username"] == "nieuwe_gebruiker"
-        assert data["is_admin"] is False
+        assert data["role"] == "viewer"
 
     async def test_create_user_duplicate(self, auth_client):
         """Dubbele gebruikersnaam geeft 409."""
@@ -86,7 +86,8 @@ class TestAuthCreateUser:
             "/api/auth/users/create",
             json={"username": ""},
         )
-        assert response.status_code == 400
+        # Pydantic validatie geeft 422 (Unprocessable Entity)
+        assert response.status_code in (400, 422)
 
     async def test_create_user_requires_auth(self, test_client):
         """Zonder sessie kan geen gebruiker aangemaakt worden (401)."""
