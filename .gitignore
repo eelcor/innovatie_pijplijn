@@ -20,8 +20,10 @@ build/
 *.sqlite
 *.sqlite3
 
-# Data directory — contains DB, uploads, backups
+# Data directories — contain DB, uploads, backups
 data/
+initiatives/
+vragen/
 
 # Environment variables
 .env
