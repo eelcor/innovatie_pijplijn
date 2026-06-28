@@ -174,9 +174,24 @@ require_admin = require_role(ROLE_ADMIN)    # async callable, used as Depends(re
 
 # --- Auth Routes ---
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
 router = APIRouter()
+
+# Importeer templates en render helper (lazy import om circular imports te voorkomen)
+def _get_templates():
+    from app.helpers import templates
+    return templates
+
+
+@router.get("/login", include_in_schema=False)
+async def login_page(request: Request, error: str = ""):
+    """Login pagina — wordt geserveerd als HTML template."""
+    templates = _get_templates()
+    return templates.TemplateResponse(
+        "login.html",
+        {"request": request, "error": error},
+    )
 
 
 class LoginRequest(BaseModel):

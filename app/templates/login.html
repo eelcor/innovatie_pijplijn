@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% block title %}Inloggen — Innovatiepijplijn{% endblock %}
+
+{% block content %}
+<div class="login-container">
+  <div class="login-card">
+    <div class="login-header">
+      <div class="logo-mark" style="width:48px;height:48px;"></div>
+      <h1>Innovatiepijplijn</h1>
+      <p class="login-subtitle">Log in om door te gaan</p>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <form id="login-form" class="login-form">
+      <div class="form-group">
+        <label for="username">Gebruikersnaam</label>
+        <input type="text" id="username" name="username" required autofocus autocomplete="username" placeholder="bijv. admin">
+      </div>
+
+      <div class="form-group">
+        <label for="password">Wachtwoord</label>
+        <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="••••••••">
+      </div>
+
+      <button type="submit" class="btn btn-primary login-btn">Inloggen</button>
+
+      <div class="login-status" id="login-status"></div>
+    </form>
+
+    <div class="login-footer">
+      <p><strong>Rollen:</strong></p>
+      <ul class="roles-list">
+        <li><strong>admin</strong> — alles inclusief gebruikersbeheer en backups</li>
+        <li><strong>editor</strong> — initiatieven CRUD, hypothesen, dossier, curaties, tags, MDS, vragen</li>
+        <li><strong>viewer</strong> — alleen lezen (dashboard, detailpagina's)</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<style>
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: var(--bg);
+  padding: 24px;
+}
+
+.login-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 48px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 4px 24px oklch(0% 0 0 / 0.06);
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.login-header .logo-mark {
+  background: var(--accent);
+  border-radius: 8px;
+  margin: 0 auto 16px;
+}
+
+.login-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.login-subtitle {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.login-form .form-group {
+  margin-bottom: 20px;
+}
+
+.login-form label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.login-form input[type="text"],
+.login-form input[type="password"] {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 15px;
+  font-family: inherit;
+  transition: border-color 0.15s;
+}
+
+.login-form input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px oklch(from var(--accent) l c h / 0.12);
+}
+
+.login-btn {
+  width: 100%;
+  padding: 12px;
+  margin-top: 8px;
+  font-size: 15px;
+}
+
+.alert-error {
+  background: oklch(96% 0.04 25);
+  border: 1px solid oklch(80% 0.06 25);
+  color: oklch(40% 0.12 25);
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.login-status {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 14px;
+  min-height: 20px;
+}
+
+.login-footer {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.login-footer p {
+  margin-bottom: 8px;
+}
+
+.roles-list {
+  list-style: none;
+  padding: 0;
+}
+
+.roles-list li {
+  padding: 4px 0;
+  line-height: 1.4;
+}
+
+.roles-list li strong {
+  color: var(--fg);
+}
+</style>
+
+<script>
+document.getElementById('login-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+
+  const statusEl = document.getElementById('login-status');
+  const btn = this.querySelector('.login-btn');
+  const username = document.getElementById('username').value;
+  const password = document.getElementById('password').value;
+
+  btn.disabled = true;
+  btn.textContent = 'Inloggen...';
+  statusEl.textContent = '';
+
+  try {
+    // Haal CSRF token als die nog niet bestaat
+    let csrfToken = document.cookie.split('; ')
+      .find(row => row.startsWith('csrf_token='))
+      ?.split('=')[1];
+
+    if (!csrfToken) {
+      const csrfResp = await fetch('/api/auth/csrf-token');
+      csrfToken = csrfResp.ok ? (await csrfResp.json()).csrf_token : null;
+    }
+
+    const resp = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(csrfToken ? {'X-CSRF-Token': csrfToken} : {}),
+      },
+      body: JSON.stringify({username, password}),
+      credentials: 'same-origin',
+    });
+
+    if (resp.ok) {
+      const data = await resp.json();
+      statusEl.style.color = 'var(--success)';
+      statusEl.textContent = `Welkom, ${data.username}! (${data.role}) — doorverwijzen...`;
+      setTimeout(() => window.location.href = '/', 800);
+    } else {
+      const err = await resp.json();
+      statusEl.style.color = 'var(--stopped)';
+      statusEl.textContent = err.detail || 'Inloggen mislukt';
+    }
+  } catch (err) {
+    statusEl.style.color = 'var(--stopped)';
+    statusEl.textContent = 'Verbindingsfout — probeer het opnieuw';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Inloggen';
+  }
+});
+</script>
+{% endblock %}
