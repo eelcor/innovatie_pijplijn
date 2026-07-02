@@ -111,7 +111,7 @@
   {% for item in items %}
   {% set initiative = initiatives_map.get(item.initiative_id) %}
   {% if initiative %}
-  <a href="/api/initiatieven/detail/{{ initiative.id }}" class="initiative-card" data-item-id="{{ item.id }}">
+  <a href="{{ url_for('initiative_detail', id=initiative.id) }}" class="initiative-card" data-item-id="{{ item.id }}">
     <div class="card-header">
       <span class="card-title">{{ initiative.title }}</span>
       <span class="phase-badge phase-{{ 'gestopt' if initiative.status == 'gestopt' else initiative.phase }}">{{ phaseLabel(initiative.phase) }}</span>

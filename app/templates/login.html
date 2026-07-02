@@ -182,11 +182,11 @@ document.getElementById('login-form').addEventListener('submit', async function(
       ?.split('=')[1];
 
     if (!csrfToken) {
-      const csrfResp = await fetch('/api/auth/csrf-token');
+      const csrfResp = await fetch(ROUTES.csrfToken);
       csrfToken = csrfResp.ok ? (await csrfResp.json()).csrf_token : null;
     }
 
-    const resp = await fetch('/api/auth/login', {
+    const resp = await fetch(ROUTES.authLogin, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

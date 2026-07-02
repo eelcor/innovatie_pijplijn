@@ -8,6 +8,79 @@ from datetime import datetime, timedelta
 from fastapi.templating import Jinja2Templates
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# --- Configuratie: basis-URL van de applicatie ---
+
+def get_base_url() -> str:
+    """Haal de basis-URL op uit APP_BASE_URL of val terug op standaard."""
+    return os.environ.get("APP_BASE_URL", "http://localhost:8000")
+
+# Route-naam → URL mapping (wordt gebruikt door url_for in templates)
+# Format: route_name: (prefix, path_pattern)
+# prefix wordt voorafgezet aan path_pattern
+ROUTE_MAP = {
+    # Dashboard
+    "dashboard": ("", "/"),
+    # Initiatieven
+    "initiatives_list": ("/api/initiatieven", "/lijst"),
+    "initiative_detail": ("/api/initiatieven", "/detail/{id}"),
+    "initiatives_filter": ("/api/initiatieven", "/filter"),
+    "initiatives_json": ("/api/initiatieven", "/json"),
+    # Curaties
+    "curations_list": ("/api/curaties", "/lijst"),
+    "curation_detail": ("/api/curaties", "/detail/{id}"),
+    # Centrale vragen
+    "questions_list": ("/api/vragen", "/lijst"),
+    "question_detail": ("/api/vragen", "/detail/{id}"),
+    # MDS teams
+    "mds_list": ("/api/mds", "/lijst"),
+    "mds_detail": ("/api/mds", "/{id}"),
+    # Tags
+    "tags_list": ("/api/tags", "/lijst"),
+    "tag_detail": ("/api/tags", "/{id}"),
+    # Admin
+    "admin_page": ("", "/admin"),
+    "login_page": ("", "/login"),
+    # API endpoints (gebruikt door JavaScript)
+    "api_auth_me": ("/api/auth", "/me"),
+    "api_auth_login": ("/api/auth", "/login"),
+    "api_auth_logout": ("/api/auth", "/logout"),
+    "api_auth_csrf_token": ("/api/auth", "/csrf-token"),
+    "api_admin_status": ("/api/admin", "/status"),
+    "api_health": ("", "/health"),
+    # Dossier
+    "dossier_file_download": ("/api/dossier/files/download", "/{file_id}"),
+    "dossier_files_upload": ("/api/dossier/files/upload", "/{initiative_id}"),
+    "question_file_download": ("/api/vragen/{question_id}/files/download", "/{file_id}"),
+    "question_files_upload": ("/api/vragen/{question_id}/files/upload", ""),
+}
+
+
+def url_for(route_name: str, **kwargs) -> str:
+    """Genereer een volledige URL voor een route-naam.
+
+    Gebruik in templates als:
+      {{ url_for('dashboard') }}           → /  of http://host/
+      {{ url_for('initiative_detail', id='abc-123') }}
+
+    kwargs worden gebruikt om {placeholder} in het pad te vervangen.
+    """
+    route = ROUTE_MAP.get(route_name)
+    if not route:
+        return "#"
+    prefix, path = route
+    # Vervang placeholders met kwargs
+    for key, value in kwargs.items():
+        path = path.replace("{" + key + "}", str(value))
+    full_path = prefix + path
+    return full_path
+
+
+def url_for_full(route_name: str, **kwargs) -> str:
+    """Genereer een volledige URL inclusief basis-URL (voor JS/extern gebruik)."""
+    return get_base_url() + url_for(route_name, **kwargs)
+
+
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "app", "templates"))
 
 
@@ -187,6 +260,9 @@ def render_markdown(text: str) -> str:
 
 
 # Registreer functies bij Jinja2 environment
+templates.env.globals["url_for"] = url_for
+templates.env.globals["url_for_full"] = url_for_full
+templates.env.globals["base_url"] = get_base_url
 templates.env.globals["phaseLabel"] = phase_label
 templates.env.globals["horizonLabel"] = horizon_label
 templates.env.globals["statusLabel"] = status_label

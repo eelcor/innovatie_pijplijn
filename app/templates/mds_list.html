@@ -24,7 +24,7 @@
 {% if mds_list %}
 <div class="cards-grid">
   {% for m in mds_list %}
-  <a href="/api/mds/{{ m.id }}" class="initiative-card">
+  <a href="{{ url_for('mds_detail', id=m.id) }}" class="initiative-card">
     <div class="card-header">
       <span class="card-title">{{ m.name }}</span>
       <span class="nav-badge">{{ mds_counts.get(m.id, 0) }} initiatieven</span>

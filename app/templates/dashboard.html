@@ -11,7 +11,7 @@
     <p class="page-subtitle">Overzicht van alle innovatie-initiatieven</p>
   </div>
   <div class="header-actions">
-    <a href="/api/initiatieven/lijst" class="btn btn-secondary">
+    <a href="{{ url_for('initiatives_list') }}" class="btn btn-secondary">
       Alle initiatieven bekijken
     </a>
     <button class="btn btn-primary" onclick="openModal('new-initiative')">
@@ -44,7 +44,7 @@
 </div>
 
 {% if without_question > 0 %}
-<a href="/api/initiatieven/lijst?no_central_question=1" style="text-decoration: none; color: inherit;">
+<a href="{{ url_for('initiatives_list') }}?no_central_question=1" style="text-decoration: none; color: inherit;">
 <div style="margin-bottom: 24px; padding: 16px 20px; background: oklch(97% 0.03 85); border: 1px solid oklch(90% 0.04 85); display: flex; align-items: center; gap: 12px; cursor: pointer; transition: all 0.1s;">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20" style="color: var(--warning); flex-shrink: 0;">
     <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
@@ -87,7 +87,7 @@
     {% for initiative in recent[:10] %}
     <tr>
       <td>
-        <a href="/api/initiatieven/detail/{{ initiative.id }}" class="initiative-name">{{ initiative.title }}</a>
+        <a href="{{ url_for('initiative_detail', id=initiative.id) }}" class="initiative-name">{{ initiative.title }}</a>
         {% if initiative.description %}
         <div class="initiative-desc">{{ initiative.description[:80] }}{% if initiative.description|length > 80 %}...{% endif %}</div>
         {% endif %}
@@ -125,7 +125,7 @@
   <h2 style="font-size: 14px; font-weight: 600; color: var(--fg); margin-bottom: 12px;">Recent gestopt met leeruitkomst</h2>
   <div class="cards-grid">
     {% for item in recent_stopped %}
-    <a href="/api/initiatieven/detail/{{ item.id }}" class="initiative-card">
+    <a href="{{ url_for('initiative_detail', id=item.id) }}" class="initiative-card">
       <div class="card-header">
         <span class="card-title">{{ item.title }}</span>
         <span class="phase-badge phase-gestopt">Gestopt</span>

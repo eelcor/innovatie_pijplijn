@@ -240,7 +240,7 @@
 
               var statusName = init.status.charAt(0).toUpperCase() + init.status.slice(1);
 
-              html += '<a href="/api/initiatieven/detail/' + init.id + '" class="initiative-card">';
+              html += '<a href="' + ROUTES.initiativeDetail.replace('__ID__', init.id) + '" class="initiative-card">';
               html += '<div class="card-header"><span class="card-title">' + escapeHtml(init.title) + '</span>';
               html += '<span class="phase-badge phase-' + phaseClass + '">' + phaseName + '</span></div>';
 

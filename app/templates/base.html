@@ -952,7 +952,7 @@
 
       <nav class="nav-section">
         <div class="nav-label">Overzicht</div>
-        <a href="/" class="nav-item {% if active_page == 'dashboard' %}active{% endif %}">
+        <a href="{{ url_for('dashboard') }}" class="nav-item {% if active_page == 'dashboard' %}active{% endif %}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <rect x="3" y="3" width="7" height="7"/>
             <rect x="14" y="3" width="7" height="7"/>
@@ -961,20 +961,20 @@
           </svg>
           Dashboard
         </a>
-        <a href="/api/initiatieven/lijst" class="nav-item {% if active_page == 'initiatieven' %}active{% endif %}">
+        <a href="{{ url_for('initiatives_list') }}" class="nav-item {% if active_page == 'initiatieven' %}active{% endif %}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <circle cx="12" cy="12" r="10"/>
             <path d="M12 6v6l4 2"/>
           </svg>
           Initiatieven
         </a>
-        <a href="/api/curaties/lijst" class="nav-item {% if active_page == 'curaties' %}active{% endif %}">
+        <a href="{{ url_for('curations_list') }}" class="nav-item {% if active_page == 'curaties' %}active{% endif %}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
           </svg>
           Curaties
         </a>
-        <a href="/api/vragen/lijst" class="nav-item {% if active_page == 'vragen' %}active{% endif %}">
+        <a href="{{ url_for('questions_list') }}" class="nav-item {% if active_page == 'vragen' %}active{% endif %}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <circle cx="12" cy="12" r="10"/>
             <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/>
@@ -982,7 +982,7 @@
           </svg>
           Centrale vragen
         </a>
-        <a href="/api/mds/lijst" class="nav-item {% if active_page == 'mds' %}active{% endif %}">
+        <a href="{{ url_for('mds_list') }}" class="nav-item {% if active_page == 'mds' %}active{% endif %}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
             <circle cx="9" cy="7" r="4"/>
@@ -991,7 +991,7 @@
           </svg>
           MDS teams
         </a>
-        <a href="/api/tags/lijst" class="nav-item {% if active_page == 'tags' %}active{% endif %}">
+        <a href="{{ url_for('tags_list') }}" class="nav-item {% if active_page == 'tags' %}active{% endif %}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"/>
           </svg>
@@ -1012,7 +1012,7 @@
       <!-- Admin link (alleen voor admin-gebruikers, getoond via JS) -->
       <nav class="nav-section" id="admin-nav" style="display:none;">
         <div class="nav-label">Beheer</div>
-        <a href="/admin" class="nav-item {% if active_page == 'admin' %}active{% endif %}">
+        <a href="{{ url_for('admin_page') }}" class="nav-item {% if active_page == 'admin' %}active{% endif %}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
             <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -1030,7 +1030,7 @@
           </svg>
           <span id="user-username">...</span>
         </div>
-        <a href="/login" class="nav-item" id="login-link" style="display:none;">
+        <a href="{{ url_for('login_page') }}" class="nav-item" id="login-link" style="display:none;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/>
           </svg>
@@ -1287,13 +1287,26 @@
       return labels[h] || h;
     }
 
+    // --- Route URLs (gegenereerd door server, netwerk-agnostisch) ---
+    const ROUTES = {
+      dashboard: '{{ url_for("dashboard") }}',
+      login: '{{ url_for("login_page") }}',
+      authMe: '{{ url_for("api_auth_me") }}',
+      authLogin: '{{ url_for("api_auth_login") }}',
+      authLogout: '{{ url_for("api_auth_logout") }}',
+      csrfToken: '{{ url_for("api_auth_csrf_token") }}',
+      initiativeDetail: '{{ url_for("initiative_detail", id="__ID__") }}',
+      curationDetail: '{{ url_for("curation_detail", id="__ID__") }}',
+      dossierFileUpload: '{{ url_for("dossier_files_upload", initiative_id="__ID__") }}',
+    };
+
     // CSRF token
     let csrfToken = null;
 
     async function getCsrfToken() {
       if (csrfToken) return csrfToken;
       try {
-        const resp = await fetch('/api/auth/csrf-token');
+        const resp = await fetch(ROUTES.csrfToken);
         if (resp.ok) {
           csrfToken = (await resp.json()).csrf_token;
         }
@@ -1318,7 +1331,7 @@
       const response = await fetch(url, { ...defaults, ...options });
       // Redirect to login on 401
       if (response.status === 401 && !url.includes('/api/auth/login')) {
-        window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+        window.location.href = ROUTES.login + '?redirect=' + encodeURIComponent(window.location.pathname);
         throw new Error('Authenticatie vereist');
       }
       if (!response.ok) {
@@ -1332,7 +1345,7 @@
     // Check auth state on page load
     async function checkAuth() {
       try {
-        const resp = await fetch('/api/auth/me', { credentials: 'same-origin' });
+        const resp = await fetch(ROUTES.authMe, { credentials: 'same-origin' });
         if (resp.ok) {
           const user = await resp.json();
           document.getElementById('user-username').textContent = user.username + ' (' + user.role + ')';
@@ -1363,14 +1376,14 @@
     // Logout function
     async function doLogout() {
       try {
-        await fetch('/api/auth/logout', {
+        await fetch(ROUTES.authLogout, {
           method: 'POST',
           credentials: 'same-origin',
         });
       } catch (e) {
         console.error('Logout failed:', e);
       }
-      window.location.href = '/login';
+      window.location.href = ROUTES.login;
     }
 
     // Check auth on page load
@@ -1446,7 +1459,7 @@
         closeModal('new-initiative');
         showToast(result.message || 'Initiatief aangemaakt');
         // Redirect to detail
-        window.location.href = '/api/initiatieven/detail/' + result.id;
+        window.location.href = ROUTES.initiativeDetail.replace('__ID__', result.id);
       } catch (err) {
         console.error(err);
       }
@@ -1468,7 +1481,7 @@
         });
         closeModal('new-curation');
         showToast(result.message || 'Curatie aangemaakt');
-        window.location.href = '/api/curaties/detail/' + result.id;
+        window.location.href = ROUTES.curationDetail.replace('__ID__', result.id);
       } catch (err) {
         console.error(err);
       }

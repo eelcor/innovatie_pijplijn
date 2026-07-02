@@ -88,7 +88,7 @@
         {% if initiative.mds_id %}
         {% set mds_item = all_mds | selectattr('id', 'equalto', initiative.mds_id) | list | first %}
         {% if mds_item %}
-        <div class="detail-value"><a href="/api/mds/{{ mds_item.id }}" style="color: var(--fg); text-decoration: none;">{{ mds_item.name }}</a></div>
+        <div class="detail-value"><a href="{{ url_for('mds_detail', id=mds_item.id) }}" style="color: var(--fg); text-decoration: none;">{{ mds_item.name }}</a></div>
         {% else %}
         <div class="detail-value">{{ initiative.mds or initiative.mds_id }}</div>
         {% endif %}
@@ -112,7 +112,7 @@
         {% if tags %}
         <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;">
           {% for tag in tags %}
-          <a href="/api/tags/{{ tag.id }}" style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; background: var(--bg); border: 1px solid var(--border); font-size: 12px; color: var(--muted); text-decoration: none; cursor: pointer;">
+          <a href="{{ url_for('tag_detail', id=tag.id) }}" style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; background: var(--bg); border: 1px solid var(--border); font-size: 12px; color: var(--muted); text-decoration: none; cursor: pointer;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12">
               <path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"/>
             </svg>
@@ -140,7 +140,7 @@
         <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 4px;">
           {% for cq in central_questions %}
           <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border);">
-            <a href="/api/vragen/{{ cq.id }}" style="font-size: 13px; color: var(--fg); text-decoration: none;">{{ cq.question }}</a>
+            <a href="{{ url_for('question_detail', id=cq.id) }}" style="font-size: 13px; color: var(--fg); text-decoration: none;">{{ cq.question }}</a>
             <button onclick="removeQuestion('{{ cq.id }}')" style="background: none; border: none; cursor: pointer; color: var(--muted); padding: 2px 4px;">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
                 <path d="M18 6L6 18M6 6l12 12"/>
@@ -1134,7 +1134,7 @@
     const formData = new FormData(e.target);
 
     try {
-      await fetch('/api/dossier/files/upload/' + initiativeId, {
+      await fetch(ROUTES.dossierFileUpload.replace('__ID__', initiativeId), {
         method: 'POST',
         body: formData,
       });

@@ -18,7 +18,7 @@
     {% if tags %}
     <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
       {% for tag in tags %}
-      <a href="/api/tags/{{ tag.id }}" style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; background: var(--bg); border: 1px solid var(--border); font-size: 12px; color: var(--muted); text-decoration: none; cursor: pointer;">
+      <a href="{{ url_for('tag_detail', id=tag.id) }}" style="display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; background: var(--bg); border: 1px solid var(--border); font-size: 12px; color: var(--muted); text-decoration: none; cursor: pointer;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="12" height="12">
           <path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z"/>
         </svg>
@@ -50,7 +50,7 @@
   {% if initiatives %}
   <div class="cards-grid">
     {% for init in initiatives %}
-    <a href="/api/initiatieven/detail/{{ init.id }}" class="initiative-card">
+    <a href="{{ url_for('initiative_detail', id=init.id) }}" class="initiative-card">
       <div class="card-header">
         <span class="card-title">{{ init.title }}</span>
         <span class="phase-badge phase-{{ 'gestopt' if init.status == 'gestopt' else init.phase }}">{{ phaseLabel(init.phase) }}</span>

@@ -123,6 +123,8 @@ async def centrale_vragen_json(db: Session = Depends(get_db)):
     return result
 
 
+# /detail alias — consistente URL's met andere modules
+@router.get("/detail/{question_id}")
 @router.get("/{question_id}")
 async def centrale_vraag_detail(request: Request, question_id: str, db: Session = Depends(get_db)):
     """Detailpagina voor een centrale vraag met alle gekoppelde initiatieven."""

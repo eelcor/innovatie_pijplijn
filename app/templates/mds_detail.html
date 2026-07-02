@@ -33,7 +33,7 @@
 {% if initiatives %}
 <div class="cards-grid">
   {% for init in initiatives %}
-  <a href="/api/initiatieven/detail/{{ init.id }}" class="initiative-card">
+  <a href="{{ url_for('initiative_detail', id=init.id) }}" class="initiative-card">
     <div class="card-header">
       <span class="card-title">{{ init.title }}</span>
       <span class="phase-badge phase-{{ 'gestopt' if init.status == 'gestopt' else init.phase }}">{{ phaseLabel(init.phase) }}</span>

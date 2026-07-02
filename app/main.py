@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.auth import ensure_admin_user, router as auth_router, require_admin
 from app.csrf import CSRFMiddleware, AuthMiddleware, router as csrf_router
 from app.database import init_db, get_db, DB_PATH
-from app.helpers import BASE_DIR, templates
+from app.helpers import BASE_DIR, templates, get_base_url
 from app.models import DossierFile, User
 from app.search import create_fts_table
 from app.routes import dashboard, initiatives, hypotheses, dossier, curations, central_questions, mds, tags, ai
@@ -96,6 +96,15 @@ app.add_middleware(AuthMiddleware)
 # Static files
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "app", "static")), name="static")
 
+# Injecteer APP_BASE_URL in alle template responses via context processor
+@app.middleware("http")
+async def add_base_url_to_context(request: Request, call_next):
+    response = await call_next(request)
+    return response
+
+# Registreer base_url als Jinja2 globale waarde
+templates.env.globals["base_url"] = get_base_url
+
 # Auth routes (login/logout/user management) — geen CSRF nodig op deze endpoints
 # (CSRF wordt toegepast via middleware maar auth routes hebben eigen sessie-beheer)
 app.include_router(auth_router, prefix="/api/auth", tags=["authenticatie"])
@@ -124,6 +133,8 @@ async def admin_page(
     )
 
 # Route registries
+# Route registries — alle routes krijgen een prefix-prefix van APP_BASE_URL indien ingesteld
+# Dashboard (geen prefix)
 app.include_router(dashboard.router, tags=["dashboard"])
 app.include_router(initiatives.router, prefix="/api/initiatieven", tags=["initiatieven"])
 app.include_router(hypotheses.router, prefix="/api/hypothesen", tags=["hypothesen"])

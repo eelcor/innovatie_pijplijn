@@ -57,6 +57,8 @@ async def curaties_json(db: Session = Depends(get_db)):
     return result
 
 
+# /detail alias — consistente URL's met andere modules
+@router.get("/detail/{curation_id}")
 @router.get("/{curation_id}")
 async def curatie_detail(request: Request, curation_id: str, db: Session = Depends(get_db)):
     """Detailpagina voor een curatie met alle initiatieven."""
@@ -73,22 +75,19 @@ async def curatie_detail(request: Request, curation_id: str, db: Session = Depen
         .all()
     )
 
-    initiatives = []
+    # Bouw een map van initiative_id → Initiative object (voor template)
+    initiatives_map = {}
     for item in items:
         init = db.query(Initiative).filter(Initiative.id == item.initiative_id).first()
         if init:
-            initiatives.append({
-                "initiative": init,
-                "note": item.note,
-                "position": item.position,
-                "item_id": item.id,
-            })
+            initiatives_map[item.initiative_id] = init
 
     return render_template(
         "curation_detail.html",
         request=request,
         curation=curation,
-        items=initiatives,
+        items=items,
+        initiatives_map=dict(initiatives_map),
     )
 
 
