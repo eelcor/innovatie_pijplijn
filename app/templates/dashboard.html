@@ -11,6 +11,14 @@
     <p class="page-subtitle">Overzicht van alle innovatie-initiatieven</p>
   </div>
   <div class="header-actions">
+    <a href="/api/export/excel" class="btn btn-secondary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+        <polyline points="7,10 12,15 17,10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      Export Excel
+    </a>
     <a href="{{ url_for('initiatives_list') }}" class="btn btn-secondary">
       Alle initiatieven bekijken
     </a>
@@ -45,25 +53,25 @@
 
 {% if without_question > 0 %}
 <a href="{{ url_for('initiatives_list') }}?no_central_question=1" style="text-decoration: none; color: inherit;">
-<div style="margin-bottom: 24px; padding: 16px 20px; background: oklch(97% 0.03 85); border: 1px solid oklch(90% 0.04 85); display: flex; align-items: center; gap: 12px; cursor: pointer; transition: all 0.1s;">
+<div style="margin-bottom: 28px; padding: 16px 22px; background: var(--warning-subtle); border: 1px solid #FDE68A; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: all 0.15s; border-radius: 12px;">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20" style="color: var(--warning); flex-shrink: 0;">
     <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
     <path d="M12 9v4M12 17h.01"/>
   </svg>
   <div>
-    <span style="font-size: 13px; font-weight: 600; color: var(--warning);">{{ without_question }} initiatieven zonder centrale vraag</span>
-    <span style="font-size: 12px; color: var(--muted); margin-left: 8px;">Klik om ze te bekijken en koppel een centrale vraag voor beter overzicht.</span>
+    <span style="font-size: 13.5px; font-weight: 600; color: var(--warning);">{{ without_question }} initiatieven zonder centrale vraag</span>
+    <span style="font-size: 13px; color: var(--muted); margin-left: 8px;">Klik om ze te bekijken en koppel een centrale vraag voor beter overzicht.</span>
   </div>
 </div>
 </a>
 {% endif %}
 
 <!-- Phase distribution -->
-<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); margin-bottom: 32px;">
+<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); margin-bottom: 32px; border-radius: 12px; overflow: hidden;">
   {% for phase in ['verkenning', 'experiment', 'pilot', 'opschaling'] %}
-  <div style="background: var(--surface); padding: 16px 20px;">
-    <span class="phase-badge phase-{{ phase }}">{{ phaseLabel(phase) }}</span>
-    <div style="font-size: 20px; font-weight: 600; margin-top: 8px; font-family: var(--font-display);">
+  <div style="background: var(--surface); padding: 20px 24px; text-align: center;">
+    <span class="phase-badge phase-{{ phase }}" style="display: inline-flex;">{{ phaseLabel(phase) }}</span>
+    <div style="font-size: 26px; font-weight: 700; margin-top: 10px; font-family: var(--font-display); letter-spacing: -0.02em;">
       {{ phase_counts.get(phase, 0) }}
     </div>
   </div>
@@ -71,7 +79,7 @@
 </div>
 
 <!-- Laatste 10 initiatieven -->
-<h2 style="font-size: 14px; font-weight: 600; color: var(--fg); margin-bottom: 16px;">Laatste ingevoerde initiatieven</h2>
+<h2 style="font-size: 15px; font-weight: 600; color: var(--fg); margin-bottom: 18px; letter-spacing: -0.01em;">Laatste ingevoerde initiatieven</h2>
 {% if recent %}
 <table class="data-table">
   <thead>
@@ -121,8 +129,8 @@
 
 <!-- Recent gestopt -->
 {% if recent_stopped %}
-<div style="margin-top: 32px;">
-  <h2 style="font-size: 14px; font-weight: 600; color: var(--fg); margin-bottom: 12px;">Recent gestopt met leeruitkomst</h2>
+<div style="margin-top: 36px;">
+  <h2 style="font-size: 15px; font-weight: 600; color: var(--fg); margin-bottom: 16px; letter-spacing: -0.01em;">Recent gestopt met leeruitkomst</h2>
   <div class="cards-grid">
     {% for item in recent_stopped %}
     <a href="{{ url_for('initiative_detail', id=item.id) }}" class="initiative-card">

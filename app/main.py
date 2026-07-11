@@ -31,6 +31,25 @@ async def lifespan(app: FastAPI):
     finally:
         db_next.close()
 
+    # Migratie: maak timeline_events tabel als deze nog niet bestaat
+    db_migrate = next(get_db())
+    try:
+        from sqlalchemy import text as sa_text
+        db_migrate.execute(sa_text("""
+            CREATE TABLE IF NOT EXISTS timeline_events (
+                id TEXT PRIMARY KEY,
+                initiative_id TEXT NOT NULL REFERENCES initiatives(id) ON DELETE CASCADE,
+                event_type TEXT NOT NULL,
+                title TEXT NOT NULL,
+                description TEXT,
+                metadata_json TEXT,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+        db_migrate.commit()
+    finally:
+        db_migrate.close()
+
     # Zorg dat uploads directory bestaat
     uploads_dir = os.path.join(os.path.dirname(DB_PATH) or ".", "uploads")
     os.makedirs(uploads_dir, exist_ok=True)
@@ -145,6 +164,8 @@ app.include_router(mds.router, prefix="/api/mds", tags=["mds"])
 app.include_router(tags.router, prefix="/api/tags", tags=["tags"])
 app.include_router(ai.router, tags=["ai"])
 app.include_router(admin_router, tags=["admin"])
+from app.routes import export as export_routes
+app.include_router(export_routes.router, prefix="/api/export", tags=["export"])
 
 
 # --- Bestandsdownload ---

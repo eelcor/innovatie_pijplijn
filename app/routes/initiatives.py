@@ -9,7 +9,7 @@ from app.database import get_db
 from app.helpers import render_template
 from app.models import (
     Initiative, Hypothesis, InitiativeQuestion, CentralQuestion,
-    MDS, Tag, InitiativeTag,
+    MDS, Tag, InitiativeTag, TimelineEvent,
 )
 from app.schemas import (
     InitiativeCreate,
@@ -41,6 +41,18 @@ def _log_change(db, initiative_id: str, field: str, old_value, new_value):
 def _get_changes(initiative_id: str) -> list:
     """Haal wijzigingen-logboek op voor een initiatief."""
     return _changes_log.get(initiative_id, [])
+
+
+def _add_timeline_event(db, initiative_id: str, event_type: str, title: str, description: str = None):
+    """Voeg een tijdlijn-gebeurtenis toe aan de database."""
+    event = TimelineEvent(
+        initiative_id=initiative_id,
+        event_type=event_type,
+        title=title,
+        description=description,
+    )
+    db.add(event)
+    db.flush()
 
 
 @router.get("/lijst")
@@ -180,6 +192,13 @@ async def initiatief_aanmaken(data: InitiativeCreate, db: Session = Depends(get_
             "status": initiative.status,
         })
 
+        # Log tijdlijn-gebeurtenis: initiatief aangemaakt
+        _add_timeline_event(
+            db, initiative.id,
+            "created",
+            f"Initiatief '{initiative.title}' is aangemaakt",
+        )
+
         # Één atomaire commit voor alle wijzigingen
         db.commit()
     except Exception:
@@ -221,6 +240,21 @@ async def initiatief_bewerken(initiative_id: str, data: InitiativeUpdate, db: Se
             new_value = update_data[field]
             if old_value != new_value:
                 _log_change(db, initiative.id, field, old_value, new_value)
+
+                # Log ook tijdlijn-gebeurtenis voor fase/status wijzigingen
+                if field == "phase":
+                    phase_labels = {"verkenning": "Verkenning", "experiment": "Experiment", "pilot": "Pilot", "opschaling": "Opschaling"}
+                    _add_timeline_event(
+                        db, initiative.id,
+                        "phase_change",
+                        f"Fase gewijzigd: {phase_labels.get(old_value, old_value)} → {phase_labels.get(new_value, new_value)}",
+                    )
+                elif field == "status":
+                    _add_timeline_event(
+                        db, initiative.id,
+                        "status_change",
+                        f"Status gewijzigd: {old_value} → {new_value}",
+                    )
 
     # Verwerk special fields apart (niet als reguliere attributen)
     cq_ids = update_data.pop("central_question_ids", None)
@@ -286,6 +320,14 @@ async def initiatief_stoppen(initiative_id: str, data: InitiativeStop, db: Sessi
 
     # Log status change
     _log_change(db, initiative.id, "status", initiative.status, "gestopt")
+
+    # Log tijdlijn-gebeurtenis: initiatief gestopt
+    _add_timeline_event(
+        db, initiative.id,
+        "status_change",
+        f"Initiatief gestopt — {data.stop_reason[:80]}{'…' if data.stop_reason and len(data.stop_reason) > 80 else ''}",
+        description=data.stop_reason,
+    )
 
     initiative.status = "gestopt"
     initiative.stop_reason = data.stop_reason
@@ -416,3 +458,64 @@ async def initiatief_changes(initiative_id: str, db: Session = Depends(get_db)):
     # Haal changes op uit de metadata (opgeslagen als JSON in extra veld)
     # Voor MVP: we gebruiken een geheugen-based log per sessie
     return _get_changes(initiative_id)
+
+
+# --- Tijdlijn API ---
+
+@router.get("/{initiative_id}/timeline")
+async def initiatief_tijdlijn(initiative_id: str, db: Session = Depends(get_db)):
+    """Haal alle tijdlijn-gebeurtenissen op voor een initiatief."""
+    initiative = db.query(Initiative).filter(
+        Initiative.id == initiative_id
+    ).first()
+    if not initiative:
+        raise HTTPException(status_code=404, detail="Initiatief niet gevonden")
+
+    events = (
+        db.query(TimelineEvent)
+        .filter(TimelineEvent.initiative_id == initiative_id)
+        .order_by(TimelineEvent.created_at.asc())
+        .all()
+    )
+
+    return [{
+        "id": e.id,
+        "event_type": e.event_type,
+        "title": e.title,
+        "description": e.description,
+        "created_at": e.created_at.isoformat() if e.created_at else None,
+    } for e in events]
+
+
+@router.post("/{initiative_id}/timeline/milestone")
+async def add_milestone(initiative_id: str, data: dict, db: Session = Depends(get_db)):
+    """Voeg een handmatige mijlpaal toe aan de tijdlijn."""
+    initiative = db.query(Initiative).filter(
+        Initiative.id == initiative_id
+    ).first()
+    if not initiative:
+        raise HTTPException(status_code=404, detail="Initiatief niet gevonden")
+
+    title = data.get("title", "Mijlpaal bereikt").strip()
+    description = data.get("description", "").strip() or None
+
+    if not title:
+        raise HTTPException(status_code=400, detail="Titel is verplicht")
+
+    event = TimelineEvent(
+        initiative_id=initiative_id,
+        event_type="milestone",
+        title=title,
+        description=description,
+    )
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+
+    return {
+        "id": event.id,
+        "title": event.title,
+        "description": event.description,
+        "created_at": event.created_at.isoformat(),
+        "message": "Mijlpaal toegevoegd",
+    }

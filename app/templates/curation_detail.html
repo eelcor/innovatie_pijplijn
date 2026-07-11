@@ -28,6 +28,13 @@
       </svg>
       Narratief genereren
     </button>
+    <button class="btn btn-secondary" onclick="openEditModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+        <path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+      Bewerken
+    </button>
     <button class="btn btn-primary" onclick="openAddItemModal()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M12 5v14M5 12h14"/>
@@ -69,6 +76,12 @@
   >
     Kopiëren
   </button>
+
+  <!-- Lijst van eerdere narratieven -->
+  <div id="narratief-list" style="margin-top: 20px; display: none;">
+    <div style="font-size: 13px; color: var(--muted); margin-bottom: 8px; font-weight: 500;">Gegenereerde narratieven</div>
+    <div id="narratief-list-items"></div>
+  </div>
 </div>
 
 <!-- AI Initiatief-suggesties sectie -->
@@ -111,29 +124,36 @@
   {% for item in items %}
   {% set initiative = initiatives_map.get(item.initiative_id) %}
   {% if initiative %}
-  <a href="{{ url_for('initiative_detail', id=initiative.id) }}" class="initiative-card" data-item-id="{{ item.id }}">
-    <div class="card-header">
-      <span class="card-title">{{ initiative.title }}</span>
-      <span class="phase-badge phase-{{ 'gestopt' if initiative.status == 'gestopt' else initiative.phase }}">{{ phaseLabel(initiative.phase) }}</span>
-    </div>
-    {% if initiative.description %}
-    <p class="card-description">{{ initiative.description[:100] }}{% if initiative.description|length > 100 %}...{% endif %}</p>
-    {% endif %}
-    {% if item.note %}
-    <p class="card-description" style="border-left: 2px solid var(--accent); padding-left: 12px; margin-top: 8px;">{{ item.note }}</p>
-    {% endif %}
-    <div class="card-meta">
-      <span style="font-family: var(--font-mono); font-size: 11px; color: var(--muted);">#{{ item.position }}</span>
-      {% if initiative.horizon %}
-      <span class="horizon-badge">{{ horizonLabel(initiative.horizon) }}</span>
+  <div style="position:relative;">
+    <a href="{{ url_for('initiative_detail', id=initiative.id) }}" class="initiative-card" data-item-id="{{ item.id }}">
+      <div class="card-header">
+        <span class="card-title">{{ initiative.title }}</span>
+        <span class="phase-badge phase-{{ 'gestopt' if initiative.status == 'gestopt' else initiative.phase }}">{{ phaseLabel(initiative.phase) }}</span>
+      </div>
+      {% if initiative.description %}
+      <p class="card-description">{{ initiative.description[:100] }}{% if initiative.description|length > 100 %}...{% endif %}</p>
       {% endif %}
-      <span class="card-meta-item">
-        <span class="status-dot status-{{ initiative.status }}"></span>
-        {{ initiative.status | capitalize }}
-      </span>
-      <span class="meta-text">{{ formatDate(initiative.updated_at.isoformat() if initiative.updated_at else None) }}</span>
-    </div>
-  </a>
+      {% if item.note %}
+      <p class="card-description" style="border-left: 2px solid var(--accent); padding-left: 12px; margin-top: 8px;">{{ item.note }}</p>
+      {% endif %}
+      <div class="card-meta">
+        <span style="font-family: var(--font-mono); font-size: 11px; color: var(--muted);">#{{ item.position }}</span>
+        {% if initiative.horizon %}
+        <span class="horizon-badge">{{ horizonLabel(initiative.horizon) }}</span>
+        {% endif %}
+        <span class="card-meta-item">
+          <span class="status-dot status-{{ initiative.status }}"></span>
+          {{ initiative.status | capitalize }}
+        </span>
+        <span class="meta-text">{{ formatDate(initiative.updated_at.isoformat() if initiative.updated_at else None) }}</span>
+      </div>
+    </a>
+    <button onclick="removeItemFromCuration('{{ item.id }}')" style="position:absolute;top:8px;right:8px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:var(--surface);border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--muted);transition:all .15s;" title="Weghalen uit curatie" onmouseover="this.style.color='var(--stopped)';this.style.borderColor='var(--stopped)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
+        <path d="M18 6L6 18M6 6l12 12"/>
+      </svg>
+    </button>
+  </div>
   {% endif %}
   {% endfor %}
 </div>
@@ -154,6 +174,106 @@
   </button>
 </div>
 {% endif %}
+
+<!-- Edit curation modal -->
+<div class="modal-overlay" id="modal-edit-curation">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">Curatie bewerken</h2>
+      <button class="modal-close" onclick="closeModal('edit-curation')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <form id="form-edit-curation">
+      <div class="modal-body">
+        <div class="form-field">
+          <label class="form-label form-label-required">Naam</label>
+          <input type="text" name="name" class="form-input" value="{{ curation.name }}" required>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Doel</label>
+          <input type="text" name="purpose" class="form-input" value="{{ curation.purpose or '' }}">
+        </div>
+        <div class="form-field">
+          <label class="form-label">Beschrijving</label>
+          <textarea name="description" class="form-textarea" style="min-height: 150px;">{{ curation.description or '' }}</textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="deleteCuration('{{ curation.id }}')" style="border-color: var(--stopped); color: var(--stopped); margin-right: auto;">Verwijderen</button>
+        <button type="button" class="btn btn-secondary" onclick="closeModal('edit-curation')">Annuleren</button>
+        <button type="submit" class="btn btn-primary">Opslaan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Narratief view/edit modal -->
+<div class="modal-overlay" id="modal-narratief-view">
+  <div class="modal" style="max-width: 720px;">
+    <div class="modal-header">
+      <h2 class="modal-title" id="narratief-modal-title">Narratief</h2>
+      <button class="modal-close" onclick="closeModal('narratief-view')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body" style="padding: 24px;">
+      <!-- Meta info -->
+      <div id="narratief-view-meta" style="font-size: 12px; color: var(--muted); margin-bottom: 16px;"></div>
+
+      <!-- View mode: rendered markdown -->
+      <div id="narratief-view-content" class="markdown-body"></div>
+
+      <!-- Edit mode: textarea (hidden by default) -->
+      <textarea
+        id="narratief-edit-content"
+        style="display:none; width: 100%; min-height: 300px; padding: 12px; font-size: 13px; font-family: monospace; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--fg); resize: vertical; box-sizing: border-box;"
+      ></textarea>
+    </div>
+    <div class="modal-footer">
+      <!-- View mode buttons -->
+      <span id="narratief-view-actions">
+        <button type="button" id="btn-copy-narratief-modal" class="btn btn-secondary" style="border-color: var(--accent); color: var(--accent);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <rect x="9" y="9" width="13" height="13" rx="2"/>
+            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+          </svg>
+          Kopiëren
+        </button>
+        <button type="button" id="btn-edit-narratief" class="btn btn-secondary" style="border-color: var(--accent); color: var(--accent);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+          Bewerken
+        </button>
+        <button type="button" id="btn-delete-narratief" class="btn btn-secondary" style="border-color: var(--accent); color: var(--accent);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z"/>
+          </svg>
+          Verwijderen
+        </button>
+      </span>
+      <!-- Edit mode buttons -->
+      <span id="narratief-edit-actions" style="display:none;">
+        <button type="button" id="btn-cancel-narratief" class="btn btn-secondary">
+          Annuleren
+        </button>
+        <button type="button" id="btn-save-narratief" class="btn btn-primary" style="border-color: var(--accent); color: var(--accent);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+            <polyline points="17 21 17 13 7 13 7 21"/>
+          </svg>
+          Opslaan
+        </button>
+      </span>
+      <button type="button" class="btn btn-primary" onclick="closeModal('narratief-view')">Sluiten</button>
+    </div>
+  </div>
+</div>
 
 <!-- Add item modal -->
 <div class="modal-overlay" id="modal-add-curation-item">
@@ -194,7 +314,69 @@
   const curationId = '{{ curation.id }}';
   const currentItemCount = {{ items|length }};
 
-  // Load initiatives for select
+  // Delete entire curation
+  async function deleteCuration(id) {
+    if (!confirm('Weet je zeker dat je deze curatie permanent wilt verwijderen? Alle gekoppelde initiatieven en narratieven gaan verloren.')) return;
+    try {
+      await apiCall('/api/curaties/' + id, { method: 'DELETE' });
+      showToast('Curatie verwijderd');
+      window.location.href = '/';
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  // Remove initiative from curation
+  async function removeItemFromCuration(itemId) {
+    if (!confirm('Dit initiatief uit de curatie verwijderen?')) return;
+    try {
+      await apiCall('/api/curaties/' + curationId + '/items/' + itemId, { method: 'DELETE' });
+      // Remove card from DOM
+      const card = document.querySelector(`[data-item-id="${itemId}"]`);
+      if (card) {
+        const wrapper = card.closest('div');
+        wrapper?.remove() || card.remove();
+      }
+      showToast('Initiatief uit curatie gehaald');
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  // HTML-escape helper
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // --- Edit curation modal ---
+
+  function openEditModal() {
+    openModal('edit-curation');
+  }
+
+  document.getElementById('form-edit-curation').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = {};
+    formData.forEach((value, key) => { if (value) data[key] = value; });
+
+    try {
+      await apiCall('/api/curaties/' + curationId, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+      closeModal('edit-curation');
+      showToast('Curatie bijgewerkt');
+      location.reload();
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+  // --- Load initiatives for select ---
+
   async function loadInitiatives() {
     try {
       const initiatives = await apiCall('/api/initiatieven/json');
@@ -266,6 +448,9 @@
       // Render met markdown support
       content.innerHTML = `<div class="ai-result-content">${renderMarkdown(currentNarratief)}</div>`;
       copyBtn.style.display = '';
+
+      // Laad de lijst opnieuw zodat het nieuwe narratief verschijnt
+      loadNarratiefList();
     } catch (err) {
       spinner.classList.remove('active');
       content.innerHTML = `<div class="ai-result-error">Fout: ${err.message || err}</div>`;
@@ -275,6 +460,139 @@
   function copyNarratief() {
     navigator.clipboard.writeText(currentNarratief);
     showToast('Narratief gekopieerd!');
+  }
+
+  // --- Narratief lijst laden ---
+
+  async function loadNarratiefList() {
+    const listContainer = document.getElementById('narratief-list');
+    const listItems = document.getElementById('narratief-list-items');
+    try {
+      const data = await apiCall('/api/ai/curaties/' + curationId + '/narratieven');
+      if (!data.narratives || data.narratives.length === 0) {
+        listContainer.style.display = 'none';
+        return;
+      }
+      listItems.innerHTML = '';
+      data.narratives.forEach(n => {
+        const date = new Date(n.created_at);
+        const formatted = date.toLocaleDateString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric' }) + ' ' + date.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+        const item = document.createElement('div');
+        item.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:10px 14px;margin-bottom:4px;background:var(--surface);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:background .15s;';
+        item.innerHTML = `
+          <div style="flex:1;min-width:0;overflow:hidden;">
+            <div style="font-size:13px;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(n.preview)}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;">${formatted}</div>
+          </div>
+        `;
+        item.addEventListener('click', () => openNarratiefModal(n.id));
+        listItems.appendChild(item);
+      });
+      listContainer.style.display = 'block';
+    } catch (err) {
+      console.error('Kon narratieven-lijst niet laden:', err);
+      listContainer.style.display = 'none';
+    }
+  }
+
+  // --- Narratief view/edit modal ---
+
+  let currentNarratiefId = null;
+  let currentNarratiefContent = '';
+  let isNarratiefEditMode = false;
+
+  async function openNarratiefModal(narrativeId) {
+    try {
+      const data = await apiCall('/api/ai/curaties/' + curationId + '/narratieven/' + narrativeId);
+      currentNarratiefContent = data.content || '';
+      currentNarratiefId = data.id;
+      isNarratiefEditMode = false;
+
+      const date = new Date(data.created_at);
+      const formatted = date.toLocaleDateString('nl-NL', { day: '2-digit', month: 'long', year: 'numeric' }) + ' om ' + date.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+
+      document.getElementById('narratief-modal-title').textContent = 'Narratief';
+      document.getElementById('narratief-view-meta').textContent = 'Gegenereerd op ' + formatted;
+      document.getElementById('narratief-view-content').innerHTML = renderMarkdown(currentNarratiefContent);
+
+      // Zet view mode aan, edit mode uit
+      showNarratiefViewMode();
+
+      // Copy button
+      const copyBtn = document.getElementById('btn-copy-narratief-modal');
+      copyBtn.onclick = () => {
+        navigator.clipboard.writeText(currentNarratiefContent);
+        showToast('Narratief gekopieerd!');
+      };
+
+      // Edit button
+      document.getElementById('btn-edit-narratief').onclick = () => showNarratiefEditMode();
+
+      // Delete button
+      const deleteBtn = document.getElementById('btn-delete-narratief');
+      deleteBtn.onclick = async () => {
+        if (!confirm('Weet je zeker dat je dit narratief wilt verwijderen?')) return;
+        try {
+          await apiCall('/api/ai/curaties/' + curationId + '/narratieven/' + currentNarratiefId, {
+            method: 'DELETE',
+          });
+          closeModal('narratief-view');
+          showToast('Narratief verwijderd');
+          loadNarratiefList();
+        } catch (err) {
+          alert('Kon narratief niet verwijderen: ' + (err.message || err));
+        }
+      };
+
+      // Cancel edit button
+      document.getElementById('btn-cancel-narratief').onclick = () => showNarratiefViewMode();
+
+      // Save button
+      document.getElementById('btn-save-narratief').onclick = saveNarratief;
+
+      openModal('narratief-view');
+    } catch (err) {
+      alert('Kon narratief niet laden: ' + (err.message || err));
+    }
+  }
+
+  function showNarratiefViewMode() {
+    isNarratiefEditMode = false;
+    document.getElementById('narratief-modal-title').textContent = 'Narratief';
+    document.getElementById('narratief-view-content').style.display = '';
+    document.getElementById('narratief-edit-content').style.display = 'none';
+    document.getElementById('narratief-view-actions').style.display = '';
+    document.getElementById('narratief-edit-actions').style.display = 'none';
+  }
+
+  function showNarratiefEditMode() {
+    isNarratiefEditMode = true;
+    document.getElementById('narratief-modal-title').textContent = 'Narratief bewerken';
+    document.getElementById('narratief-view-content').style.display = 'none';
+    document.getElementById('narratief-edit-content').style.display = '';
+    document.getElementById('narratief-edit-content').value = currentNarratiefContent;
+    document.getElementById('narratief-view-actions').style.display = 'none';
+    document.getElementById('narratief-edit-actions').style.display = '';
+  }
+
+  async function saveNarratief() {
+    const content = document.getElementById('narratief-edit-content').value;
+
+    try {
+      const data = await apiCall('/api/ai/curaties/' + curationId + '/narratieven/' + currentNarratiefId, {
+        method: 'PUT',
+        body: JSON.stringify({ content }),
+      });
+      if (data.success) {
+        currentNarratiefContent = data.content;
+        showToast('Wijzigingen opgeslagen');
+        showNarratiefViewMode();
+        document.getElementById('narratief-view-content').innerHTML = renderMarkdown(currentNarratiefContent);
+        loadNarratiefList();
+      }
+    } catch (err) {
+      alert('Kon wijzigingen niet opslaan: ' + (err.message || err));
+    }
   }
 
   // --- AI: Initiatief-suggesties ---
@@ -355,5 +673,8 @@
       btn.textContent = 'Toevoegen';
     }
   }
+
+  // Laad narratieven-lijst bij pagina laden
+  loadNarratiefList();
 </script>
 {% endblock %}

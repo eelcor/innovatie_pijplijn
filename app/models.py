@@ -83,6 +83,35 @@ class Initiative(Base):
     initiative_tags = relationship(
         "InitiativeTag", back_populates="initiative", cascade="all, delete-orphan"
     )
+    timeline_events = relationship(
+        "TimelineEvent", back_populates="initiative", cascade="all, delete-orphan"
+    )
+
+
+class TimelineEvent(Base):
+    __tablename__ = "timeline_events"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    initiative_id = Column(
+        String(36), ForeignKey("initiatives.id", ondelete="CASCADE"), nullable=False,
+    )
+    event_type = Column(
+        Enum(
+            "created", "phase_change", "status_change",
+            "hypothesis_added", "hypothesis_resolved",
+            "file_uploaded", "note_added",
+            "milestone", "custom",
+            name="timeline_event_type",
+        ),
+        nullable=False,
+    )
+    title = Column(Text, nullable=False)  # korte titel
+    description = Column(Text, nullable=True)  # toelichting (markdown)
+    metadata_json = Column(Text, nullable=True)  # extra data als JSON string
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+
+    # Relaties
+    initiative = relationship("Initiative", back_populates="timeline_events")
 
 
 class Hypothesis(Base):
@@ -301,6 +330,23 @@ class OnePager(Base):
 
     # Relaties
     initiative = relationship("Initiative")
+
+
+class CurationNarrative(Base):
+    __tablename__ = "curation_narratives"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    curation_id = Column(
+        String(36), ForeignKey("curations.id", ondelete="CASCADE"), nullable=False,
+    )
+    content = Column(Text, nullable=False)  # de gegenereerde markdown
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+    updated_at = Column(
+        DateTime, default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    # Relaties
+    curation = relationship("Curation")
 
 
 class InitiativeTag(Base):

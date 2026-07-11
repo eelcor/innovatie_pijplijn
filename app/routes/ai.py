@@ -15,7 +15,7 @@ from app.helpers import render_template
 from app.models import (
     Initiative, Hypothesis, DossierNote, Curation, CurationItem,
     CentralQuestion, InitiativeQuestion, Tag, InitiativeTag, QuestionTag, MDS,
-    OnePager,
+    OnePager, CurationNarrative,
 )
 
 router = APIRouter()
@@ -396,7 +396,16 @@ async def narratief_api(curation_id: str, db: Session = Depends(get_db)):
     if not narrative or narrative.startswith("["):
         return {"success": False, "error": narrative or "[Model gaf een leeg antwoord]"}
 
-    return {"success": True, "narrative": narrative}
+    # Sla het gegenereerde narratief op in de database
+    saved = CurationNarrative(
+        curation_id=curation_id,
+        content=narrative,
+    )
+    db.add(saved)
+    db.commit()
+    db.refresh(saved)
+
+    return {"success": True, "narrative": narrative, "id": saved.id}
 
 
 @router.post("/api/ai/curaties/{curation_id}/suggest-initiatives")
@@ -741,3 +750,96 @@ async def accept_hypothesis(
     db.refresh(new_h)
 
     return {"success": True, "hypothesis_id": new_h.id}
+
+
+# ====================================================================
+# Curation Narratives — CRUD routes voor opgeslagen narratieven
+# ====================================================================
+
+@router.get("/api/ai/curaties/{curation_id}/narratieven")
+async def list_curation_narratives(curation_id: str, db: Session = Depends(get_db)):
+    """Haal alle opgeslagen narratieven op voor een curatie."""
+    curation = db.query(Curation).filter(Curation.id == curation_id).first()
+    if not curation:
+        raise HTTPException(status_code=404, detail="Curatie niet gevonden")
+
+    narratives = db.query(CurationNarrative).filter(
+        CurationNarrative.curation_id == curation_id,
+    ).order_by(CurationNarrative.created_at.desc()).all()
+
+    return {
+        "narratives": [
+            {
+                "id": n.id,
+                "created_at": n.created_at.isoformat(),
+                "updated_at": n.updated_at.isoformat() if n.updated_at else None,
+                "preview": (n.content[:120] + "…") if len(n.content) > 120 else n.content,
+            }
+            for n in narratives
+        ],
+    }
+
+
+@router.get("/api/ai/curaties/{curation_id}/narratieven/{narrative_id}")
+async def get_curation_narrative(
+    curation_id: str, narrative_id: str, db: Session = Depends(get_db)
+):
+    """Haal één specifiek narratief op."""
+    n = db.query(CurationNarrative).filter(
+        CurationNarrative.id == narrative_id,
+        CurationNarrative.curation_id == curation_id,
+    ).first()
+    if not n:
+        raise HTTPException(status_code=404, detail="Narratief niet gevonden")
+
+    return {
+        "id": n.id,
+        "content": n.content,
+        "created_at": n.created_at.isoformat(),
+        "updated_at": n.updated_at.isoformat() if n.updated_at else None,
+    }
+
+
+@router.put("/api/ai/curaties/{curation_id}/narratieven/{narrative_id}")
+async def update_curation_narrative(
+    curation_id: str,
+    narrative_id: str,
+    payload: dict = Body(default={}),
+    db: Session = Depends(get_db),
+):
+    """Bewerk een opgeslagen narratief."""
+    n = db.query(CurationNarrative).filter(
+        CurationNarrative.id == narrative_id,
+        CurationNarrative.curation_id == curation_id,
+    ).first()
+    if not n:
+        raise HTTPException(status_code=404, detail="Narratief niet gevonden")
+
+    if "content" in payload:
+        n.content = payload["content"]
+
+    db.commit()
+    db.refresh(n)
+
+    return {
+        "success": True,
+        "id": n.id,
+        "content": n.content,
+    }
+
+
+@router.delete("/api/ai/curaties/{curation_id}/narratieven/{narrative_id}")
+async def delete_curation_narrative(
+    curation_id: str, narrative_id: str, db: Session = Depends(get_db)
+):
+    """Verwijder een opgeslagen narratief."""
+    n = db.query(CurationNarrative).filter(
+        CurationNarrative.id == narrative_id,
+        CurationNarrative.curation_id == curation_id,
+    ).first()
+    if not n:
+        raise HTTPException(status_code=404, detail="Narratief niet gevonden")
+
+    db.delete(n)
+    db.commit()
+    return {"success": True}
