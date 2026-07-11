@@ -2,9 +2,16 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
+from app.auth import (
+    perm_curations_read,
+    perm_curations_create,
+    perm_curations_update,
+    perm_curations_delete,
+    perm_curation_items_manage,
+)
 from app.database import get_db
 from app.helpers import render_template
-from app.models import Curation, CurationItem, Initiative
+from app.models import User, Curation, CurationItem, Initiative
 from app.schemas import CurationCreate, CurationItemCreate, CurationUpdate
 from app.search import update_fts_curation
 from sqlalchemy.orm import Session
@@ -13,7 +20,11 @@ router = APIRouter()
 
 
 @router.get("/lijst")
-async def curaties_lijst(request: Request, db: Session = Depends(get_db)):
+async def curaties_lijst(
+    request: Request,
+    user: User = Depends(perm_curations_read),
+    db: Session = Depends(get_db),
+):
     """Overzichtspagina van alle curaties."""
     curations = (
         db.query(Curation)
@@ -29,7 +40,10 @@ async def curaties_lijst(request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/json")
-async def curaties_json(db: Session = Depends(get_db)):
+async def curaties_json(
+    user: User = Depends(perm_curations_read),
+    db: Session = Depends(get_db),
+):
     """JSON endpoint voor alle curaties."""
     curations = (
         db.query(Curation)
@@ -60,7 +74,12 @@ async def curaties_json(db: Session = Depends(get_db)):
 # /detail alias — consistente URL's met andere modules
 @router.get("/detail/{curation_id}")
 @router.get("/{curation_id}")
-async def curatie_detail(request: Request, curation_id: str, db: Session = Depends(get_db)):
+async def curatie_detail(
+    request: Request,
+    curation_id: str,
+    user: User = Depends(perm_curations_read),
+    db: Session = Depends(get_db),
+):
     """Detailpagina voor een curatie met alle initiatieven."""
     curation = db.query(Curation).filter(
         Curation.id == curation_id
@@ -92,7 +111,11 @@ async def curatie_detail(request: Request, curation_id: str, db: Session = Depen
 
 
 @router.post("/create")
-async def curatie_aanmaken(data: CurationCreate, db: Session = Depends(get_db)):
+async def curatie_aanmaken(
+    data: CurationCreate,
+    user: User = Depends(perm_curations_create),
+    db: Session = Depends(get_db),
+):
     """F6 — Nieuwe curatie aanmaken."""
     curation = Curation(
         name=data.name,
@@ -113,7 +136,12 @@ async def curatie_aanmaken(data: CurationCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/{curation_id}")
-async def curatie_bewerken(curation_id: str, data: CurationUpdate, db: Session = Depends(get_db)):
+async def curatie_bewerken(
+    curation_id: str,
+    data: CurationUpdate,
+    user: User = Depends(perm_curations_update),
+    db: Session = Depends(get_db),
+):
     """F6 — Curatie bewerken."""
     curation = db.query(Curation).filter(
         Curation.id == curation_id
@@ -139,7 +167,11 @@ async def curatie_bewerken(curation_id: str, data: CurationUpdate, db: Session =
 
 
 @router.delete("/{curation_id}")
-async def curatie_verwijderen(curation_id: str, db: Session = Depends(get_db)):
+async def curatie_verwijderen(
+    curation_id: str,
+    user: User = Depends(perm_curations_delete),
+    db: Session = Depends(get_db),
+):
     """Verwijder een curatie (en alle items)."""
     curation = db.query(Curation).filter(
         Curation.id == curation_id
@@ -156,7 +188,10 @@ async def curatie_verwijderen(curation_id: str, db: Session = Depends(get_db)):
 
 @router.post("/{curation_id}/items/add")
 async def initiatief_toevoegen_aan_curatie(
-    curation_id: str, data: dict, db: Session = Depends(get_db)
+    curation_id: str,
+    data: dict,
+    user: User = Depends(perm_curation_items_manage),
+    db: Session = Depends(get_db),
 ):
     """Voeg een initiatief toe aan een curatie.
 
@@ -208,7 +243,10 @@ async def initiatief_toevoegen_aan_curatie(
 
 @router.delete("/{curation_id}/items/{item_id}")
 async def initiatief_verwijderen_uit_curatie(
-    curation_id: str, item_id: str, db: Session = Depends(get_db)
+    curation_id: str,
+    item_id: str,
+    user: User = Depends(perm_curation_items_manage),
+    db: Session = Depends(get_db),
 ):
     """Verwijder een initiatief uit een curatie."""
     item = db.query(CurationItem).filter(
@@ -225,7 +263,11 @@ async def initiatief_verwijderen_uit_curatie(
 
 @router.put("/{curation_id}/items/{item_id}")
 async def item_bewerken(
-    curation_id: str, item_id: str, data: dict, db: Session = Depends(get_db)
+    curation_id: str,
+    item_id: str,
+    data: dict,
+    user: User = Depends(perm_curation_items_manage),
+    db: Session = Depends(get_db),
 ):
     """Bewerk een curatie item (positie of notitie)."""
     item = db.query(CurationItem).filter(
@@ -248,7 +290,8 @@ async def item_bewerken(
 async def items_herschikken(
     curation_id: str,
     data: dict,
-    db: Session = Depends(get_db)
+    user: User = Depends(perm_curation_items_manage),
+    db: Session = Depends(get_db),
 ):
     """Herschik de volgorde van initiatieven in een curatie.
 
@@ -283,7 +326,11 @@ async def items_herschikken(
 
 
 @router.get("/{curation_id}/json")
-async def curatie_json(curation_id: str, db: Session = Depends(get_db)):
+async def curatie_json(
+    curation_id: str,
+    user: User = Depends(perm_curations_read),
+    db: Session = Depends(get_db),
+):
     """JSON endpoint voor één curatie met items."""
     curation = db.query(Curation).filter(
         Curation.id == curation_id

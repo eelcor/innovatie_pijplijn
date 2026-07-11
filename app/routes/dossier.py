@@ -7,6 +7,12 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
+from app.auth import (
+    perm_dossier_read,
+    perm_dossier_create,
+    perm_dossier_update,
+    perm_dossier_delete,
+)
 from app.database import get_db
 from app.files import (
     MAX_FILE_SIZE,
@@ -17,7 +23,7 @@ from app.files import (
     safe_content_disposition,
     _sanitize_filename,
 )
-from app.models import DossierFile, DossierNote
+from app.models import User, DossierFile, DossierNote
 from app.schemas import DossierNoteCreate, DossierNoteUpdate
 from app.search import update_fts_note
 from sqlalchemy.orm import Session
@@ -28,7 +34,11 @@ router = APIRouter()
 # --- Notities ---
 
 @router.post("/notes/create")
-async def notitie_aanmaken(data: DossierNoteCreate, db: Session = Depends(get_db)):
+async def notitie_aanmaken(
+    data: DossierNoteCreate,
+    user: User = Depends(perm_dossier_create),
+    db: Session = Depends(get_db),
+):
     """Notitie toevoegen aan dossier."""
     note = DossierNote(
         initiative_id=data.initiative_id,
@@ -51,7 +61,12 @@ async def notitie_aanmaken(data: DossierNoteCreate, db: Session = Depends(get_db
 
 
 @router.put("/notes/{note_id}")
-async def notitie_bewerken(note_id: str, data: DossierNoteUpdate, db: Session = Depends(get_db)):
+async def notitie_bewerken(
+    note_id: str,
+    data: DossierNoteUpdate,
+    user: User = Depends(perm_dossier_update),
+    db: Session = Depends(get_db),
+):
     """Bewerk een notitie."""
     note = db.query(DossierNote).filter(DossierNote.id == note_id).first()
     if not note:
@@ -71,7 +86,11 @@ async def notitie_bewerken(note_id: str, data: DossierNoteUpdate, db: Session = 
 
 
 @router.delete("/notes/{note_id}")
-async def notitie_verwijderen(note_id: str, db: Session = Depends(get_db)):
+async def notitie_verwijderen(
+    note_id: str,
+    user: User = Depends(perm_dossier_delete),
+    db: Session = Depends(get_db),
+):
     """Verwijder een notitie."""
     note = db.query(DossierNote).filter(DossierNote.id == note_id).first()
     if not note:
@@ -83,7 +102,11 @@ async def notitie_verwijderen(note_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/notes/{initiative_id}")
-async def notities_per_initiatief(initiative_id: str, db: Session = Depends(get_db)):
+async def notities_per_initiatief(
+    initiative_id: str,
+    user: User = Depends(perm_dossier_read),
+    db: Session = Depends(get_db),
+):
     """Alle notities voor een initiatief."""
     notes = (
         db.query(DossierNote)
@@ -105,7 +128,12 @@ async def notities_per_initiatief(initiative_id: str, db: Session = Depends(get_
 # --- Bestanden ---
 
 @router.post("/files/upload/{initiative_id}")
-async def bestand_uploaden(initiative_id: str, file: UploadFile, db: Session = Depends(get_db)):
+async def bestand_uploaden(
+    initiative_id: str,
+    file: UploadFile,
+    user: User = Depends(perm_dossier_create),
+    db: Session = Depends(get_db),
+):
     """Bestand uploaden naar dossier.
 
     Uses UUID-based storage paths. Original filename stored only as metadata.
@@ -159,7 +187,11 @@ async def bestand_uploaden(initiative_id: str, file: UploadFile, db: Session = D
 
 
 @router.get("/files/{initiative_id}")
-async def bestanden_per_initiatief(initiative_id: str, db: Session = Depends(get_db)):
+async def bestanden_per_initiatief(
+    initiative_id: str,
+    user: User = Depends(perm_dossier_read),
+    db: Session = Depends(get_db),
+):
     """Alle bestanden voor een initiatief."""
     files = (
         db.query(DossierFile)
@@ -180,7 +212,11 @@ async def bestanden_per_initiatief(initiative_id: str, db: Session = Depends(get
 
 
 @router.get("/files/download/{file_id}")
-async def bestand_downloaden(file_id: str, db: Session = Depends(get_db)):
+async def bestand_downloaden(
+    file_id: str,
+    user: User = Depends(perm_dossier_read),
+    db: Session = Depends(get_db),
+):
     """Download een bestand uit het dossier."""
     f = db.query(DossierFile).filter(DossierFile.id == file_id).first()
     if not f:
@@ -199,7 +235,11 @@ async def bestand_downloaden(file_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/files/view/{file_id}")
-async def bestand_viewen(file_id: str, db: Session = Depends(get_db)):
+async def bestand_viewen(
+    file_id: str,
+    user: User = Depends(perm_dossier_read),
+    db: Session = Depends(get_db),
+):
     """Serveer een bestand voor inline weergave (afbeeldingen en PDFs)."""
     f = db.query(DossierFile).filter(DossierFile.id == file_id).first()
     if not f:
@@ -226,7 +266,11 @@ async def bestand_viewen(file_id: str, db: Session = Depends(get_db)):
 
 
 @router.delete("/files/{file_id}")
-async def bestand_verwijderen(file_id: str, db: Session = Depends(get_db)):
+async def bestand_verwijderen(
+    file_id: str,
+    user: User = Depends(perm_dossier_delete),
+    db: Session = Depends(get_db),
+):
     """Verwijder een bestand."""
     f = db.query(DossierFile).filter(DossierFile.id == file_id).first()
     if not f:

@@ -2,9 +2,10 @@
 
 from fastapi import APIRouter, Depends, Query, Request
 
+from app.auth import perm_initiatives_read
 from app.database import get_db
 from app.helpers import render_template
-from app.models import Initiative, Hypothesis, InitiativeQuestion, InitiativeTag, MDS, Tag
+from app.models import User, Initiative, Hypothesis, InitiativeQuestion, InitiativeTag, MDS, Tag
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -12,7 +13,11 @@ router = APIRouter()
 
 
 @router.get("/")
-async def dashboard_page(request: Request, db: Session = Depends(get_db)):
+async def dashboard_page(
+    request: Request,
+    user: User = Depends(perm_initiatives_read),
+    db: Session = Depends(get_db),
+):
     """Hoofdscherm — Dashboard met statistieken en lijsten.
 
     Uses SQL aggregation for counts instead of loading all records into memory.
@@ -117,6 +122,7 @@ async def dashboard_page(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/api/initiatieven/filter")
 async def filter_initiatives(
+    user: User = Depends(perm_initiatives_read),
     phase: str = Query(None, description="Filter op fase"),
     status: str = Query(None, description="Filter op status"),
     horizon: str = Query(None, description="Filter op horizon"),

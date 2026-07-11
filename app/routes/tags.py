@@ -2,14 +2,16 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
+from app.auth import (
+    perm_tags_read,
+    perm_tags_create,
+    perm_tags_update,
+    perm_tags_delete,
+)
 from app.database import get_db
 from app.helpers import render_template
 from app.models import (
-    CentralQuestion,
-    Initiative,
-    InitiativeTag,
-    QuestionTag,
-    Tag,
+    User, CentralQuestion, Initiative, InitiativeTag, QuestionTag, Tag,
 )
 from app.schemas import TagCreate, TagUpdate
 from sqlalchemy.orm import Session
@@ -18,7 +20,11 @@ router = APIRouter()
 
 
 @router.get("/lijst")
-async def tags_lijst(request: Request, db: Session = Depends(get_db)):
+async def tags_lijst(
+    request: Request,
+    user: User = Depends(perm_tags_read),
+    db: Session = Depends(get_db),
+):
     """Overzichtspagina van alle actieve tags."""
     tag_list = (
         db.query(Tag)
@@ -54,7 +60,10 @@ async def tags_lijst(request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/json")
-async def tags_json(db: Session = Depends(get_db)):
+async def tags_json(
+    user: User = Depends(perm_tags_read),
+    db: Session = Depends(get_db),
+):
     """JSON endpoint voor alle actieve tags."""
     tag_list = (
         db.query(Tag)
@@ -89,7 +98,12 @@ async def tags_json(db: Session = Depends(get_db)):
 
 
 @router.get("/{tag_id}")
-async def tag_detail(request: Request, tag_id: str, db: Session = Depends(get_db)):
+async def tag_detail(
+    request: Request,
+    tag_id: str,
+    user: User = Depends(perm_tags_read),
+    db: Session = Depends(get_db),
+):
     """Detailpagina voor een tag met alle gekoppelde initiatieven en vragen."""
     tag = db.query(Tag).filter(Tag.id == tag_id).first()
     if not tag:
@@ -135,7 +149,11 @@ async def tag_detail(request: Request, tag_id: str, db: Session = Depends(get_db
 
 
 @router.post("/create")
-async def tag_aanmaken(data: TagCreate, db: Session = Depends(get_db)):
+async def tag_aanmaken(
+    data: TagCreate,
+    user: User = Depends(perm_tags_create),
+    db: Session = Depends(get_db),
+):
     """Nieuwe tag aanmaken."""
     # Check of er al een identieke actieve tag bestaat
     existing = (
@@ -169,7 +187,12 @@ async def tag_aanmaken(data: TagCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/{tag_id}")
-async def tag_bewerken(tag_id: str, data: TagUpdate, db: Session = Depends(get_db)):
+async def tag_bewerken(
+    tag_id: str,
+    data: TagUpdate,
+    user: User = Depends(perm_tags_update),
+    db: Session = Depends(get_db),
+):
     """Tag bewerken (hernoemen)."""
     tag = db.query(Tag).filter(Tag.id == tag_id).first()
     if not tag:
@@ -205,7 +228,11 @@ async def tag_bewerken(tag_id: str, data: TagUpdate, db: Session = Depends(get_d
 
 
 @router.delete("/{tag_id}")
-async def tag_verwijderen(tag_id: str, db: Session = Depends(get_db)):
+async def tag_verwijderen(
+    tag_id: str,
+    user: User = Depends(perm_tags_delete),
+    db: Session = Depends(get_db),
+):
     """Tag soft-delete (zet op inactief)."""
     tag = db.query(Tag).filter(Tag.id == tag_id).first()
     if not tag:

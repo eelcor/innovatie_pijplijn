@@ -166,27 +166,27 @@
 
 <!-- Add/Edit User Modal -->
 <div class="modal-overlay" id="modal-add-user">
-  <div class="modal" style="max-width:480px;">
+  <div class="modal" style="max-width:640px;">
     <div class="modal-header">
       <h2 class="modal-title" id="user-modal-title">Nieuwe gebruiker</h2>
       <button class="modal-close" onclick="closeModal('add-user')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
     </div>
-    <form onsubmit="saveUser(event)">
+    <form onsubmit="saveUser(event)" style="padding:28px 32px;">
       <input type="hidden" id="edit-user-id" value="">
       <div class="form-group">
         <label for="new-username">Gebruikersnaam</label>
-        <input type="text" id="new-username" required minlength="1" maxlength="100" style="width:100%;padding:8px 12px;font-size:14px;background:var(--surface);border:1px solid var(--border);color:var(--fg);font-family:var(--font-body);">
+        <input type="text" id="new-username" required minlength="1" maxlength="100" style="width:100%;padding:10px 14px;font-size:14px;background:var(--surface);border:1px solid var(--border);color:var(--fg);font-family:var(--font-body);border-radius:6px;">
       </div>
       <div class="form-group">
         <label for="new-password">Wachtwoord</label>
-        <input type="password" id="new-password" minlength="4" maxlength="72" style="width:100%;padding:8px 12px;font-size:14px;background:var(--surface);border:1px solid var(--border);color:var(--fg);font-family:var(--font-body);">
+        <input type="password" id="new-password" minlength="4" maxlength="72" style="width:100%;padding:10px 14px;font-size:14px;background:var(--surface);border:1px solid var(--border);color:var(--fg);font-family:var(--font-body);border-radius:6px;">
         <p class="help-text" id="password-help">Minimaal 4 tekens. Laat leeg bij aanpassen om wachtwoord ongewijzigd te laten.</p>
       </div>
       <div class="form-group">
         <label for="new-role">Rol</label>
-        <select id="new-role" style="width:100%;padding:8px 12px;font-size:14px;background:var(--surface);border:1px solid var(--border);color:var(--fg);font-family:var(--font-body);">
+        <select id="new-role" style="width:100%;padding:10px 14px;font-size:14px;background:var(--surface);border:1px solid var(--border);color:var(--fg);font-family:var(--font-body);border-radius:6px;">
           <option value="viewer">Viewer (alleen lezen)</option>
           <option value="editor">Editor (CRUD initiatieven)</option>
           <option value="admin">Admin (alles)</option>

@@ -2,6 +2,9 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
+
+from app.auth import perm_export_excel
+from app.models import User
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
@@ -92,7 +95,11 @@ def _add_title(ws, title: str, subtitle: str = ""):
 
 
 @router.get("/excel")
-async def export_to_excel(request: Request, db: Session = Depends(get_db)):
+async def export_to_excel(
+    request: Request,
+    user: User = Depends(perm_export_excel),
+    db: Session = Depends(get_db),
+):
     """Exporteer alle data naar een opgemaakt Excel-bestand met meerdere tabs."""
     wb = Workbook()
 

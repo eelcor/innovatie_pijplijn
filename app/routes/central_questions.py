@@ -7,6 +7,13 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 
+from app.auth import (
+    perm_questions_read,
+    perm_questions_create,
+    perm_questions_update,
+    perm_questions_delete,
+    perm_questions_files_manage,
+)
 from app.database import get_db
 from app.files import (
     UPLOAD_DIR,
@@ -16,7 +23,7 @@ from app.files import (
     safe_content_disposition,
 )
 from app.helpers import render_template
-from app.models import CentralQuestion, CentralQuestionFile, Initiative, InitiativeQuestion, QuestionTag, Tag
+from app.models import User, CentralQuestion, CentralQuestionFile, Initiative, InitiativeQuestion, QuestionTag, Tag
 from app.schemas import (
     CentralQuestionCreate,
     CentralQuestionUpdate,
@@ -29,7 +36,11 @@ router = APIRouter()
 
 
 @router.get("/lijst")
-async def centrale_vragen_lijst(request: Request, db: Session = Depends(get_db)):
+async def centrale_vragen_lijst(
+    request: Request,
+    user: User = Depends(perm_questions_read),
+    db: Session = Depends(get_db),
+):
     """Overzichtspagina van alle actieve centrale vragen."""
     questions = (
         db.query(CentralQuestion)
@@ -89,7 +100,10 @@ async def centrale_vragen_lijst(request: Request, db: Session = Depends(get_db))
 
 
 @router.get("/json")
-async def centrale_vragen_json(db: Session = Depends(get_db)):
+async def centrale_vragen_json(
+    user: User = Depends(perm_questions_read),
+    db: Session = Depends(get_db),
+):
     """JSON endpoint voor alle actieve centrale vragen."""
     questions = (
         db.query(CentralQuestion)
@@ -126,7 +140,12 @@ async def centrale_vragen_json(db: Session = Depends(get_db)):
 # /detail alias — consistente URL's met andere modules
 @router.get("/detail/{question_id}")
 @router.get("/{question_id}")
-async def centrale_vraag_detail(request: Request, question_id: str, db: Session = Depends(get_db)):
+async def centrale_vraag_detail(
+    request: Request,
+    question_id: str,
+    user: User = Depends(perm_questions_read),
+    db: Session = Depends(get_db),
+):
     """Detailpagina voor een centrale vraag met alle gekoppelde initiatieven."""
     question = db.query(CentralQuestion).filter(
         CentralQuestion.id == question_id
@@ -191,7 +210,11 @@ async def centrale_vraag_detail(request: Request, question_id: str, db: Session 
 
 
 @router.post("/create")
-async def centrale_vraag_aanmaken(data: CentralQuestionCreate, db: Session = Depends(get_db)):
+async def centrale_vraag_aanmaken(
+    data: CentralQuestionCreate,
+    user: User = Depends(perm_questions_create),
+    db: Session = Depends(get_db),
+):
     """F9 — Nieuwe centrale vraag aanmaken."""
     # Check of er al een identieke vraag bestaat (soft duplicate detection)
     existing = (
@@ -240,7 +263,12 @@ async def centrale_vraag_aanmaken(data: CentralQuestionCreate, db: Session = Dep
 
 
 @router.put("/{question_id}")
-async def centrale_vraag_bewerken(question_id: str, data: CentralQuestionUpdate, db: Session = Depends(get_db)):
+async def centrale_vraag_bewerken(
+    question_id: str,
+    data: CentralQuestionUpdate,
+    user: User = Depends(perm_questions_update),
+    db: Session = Depends(get_db),
+):
     """F9 — Centrale vraag bewerken."""
     question = db.query(CentralQuestion).filter(
         CentralQuestion.id == question_id
@@ -285,7 +313,11 @@ async def centrale_vraag_bewerken(question_id: str, data: CentralQuestionUpdate,
 
 
 @router.delete("/{question_id}")
-async def centrale_vraag_verwijderen(question_id: str, db: Session = Depends(get_db)):
+async def centrale_vraag_verwijderen(
+    question_id: str,
+    user: User = Depends(perm_questions_delete),
+    db: Session = Depends(get_db),
+):
     """F9 — Centrale vraag soft-delete (zet op inactief)."""
     question = db.query(CentralQuestion).filter(
         CentralQuestion.id == question_id
@@ -301,7 +333,12 @@ async def centrale_vraag_verwijderen(question_id: str, db: Session = Depends(get
 # --- Koppeling initiatief ↔ centrale vraag ---
 
 @router.post("/{question_id}/initiatives/add/{initiative_id}")
-async def vraag_koppelen_aan_initiatief(question_id: str, initiative_id: str, db: Session = Depends(get_db)):
+async def vraag_koppelen_aan_initiatief(
+    question_id: str,
+    initiative_id: str,
+    user: User = Depends(perm_questions_update),
+    db: Session = Depends(get_db),
+):
     """Koppel een centrale vraag aan een initiatief."""
     question = db.query(CentralQuestion).filter(
         CentralQuestion.id == question_id,
@@ -334,7 +371,12 @@ async def vraag_koppelen_aan_initiatief(question_id: str, initiative_id: str, db
 
 
 @router.delete("/{question_id}/initiatives/remove/{initiative_id}")
-async def vraag_verwijderen_van_initiatief(question_id: str, initiative_id: str, db: Session = Depends(get_db)):
+async def vraag_verwijderen_van_initiatief(
+    question_id: str,
+    initiative_id: str,
+    user: User = Depends(perm_questions_update),
+    db: Session = Depends(get_db),
+):
     """Verwijder koppeling tussen centrale vraag en initiatief."""
     link = db.query(InitiativeQuestion).filter(
         InitiativeQuestion.initiative_id == initiative_id,
@@ -349,7 +391,11 @@ async def vraag_verwijderen_van_initiatief(question_id: str, initiative_id: str,
 
 
 @router.get("/{question_id}/initiatives")
-async def initiatieven_per_vraag(question_id: str, db: Session = Depends(get_db)):
+async def initiatieven_per_vraag(
+    question_id: str,
+    user: User = Depends(perm_questions_read),
+    db: Session = Depends(get_db),
+):
     """Alle initiatieven die gekoppeld zijn aan een centrale vraag."""
     question = db.query(CentralQuestion).filter(
         CentralQuestion.id == question_id
@@ -380,7 +426,11 @@ async def initiatieven_per_vraag(question_id: str, db: Session = Depends(get_db)
 
 
 @router.get("/initiative/{initiative_id}")
-async def vragen_per_initiatief(initiative_id: str, db: Session = Depends(get_db)):
+async def vragen_per_initiatief(
+    initiative_id: str,
+    user: User = Depends(perm_questions_read),
+    db: Session = Depends(get_db),
+):
     """Alle centrale vragen die gekoppeld zijn aan een initiatief."""
     initiative = db.query(Initiative).filter(
         Initiative.id == initiative_id
@@ -410,7 +460,12 @@ async def vragen_per_initiatief(initiative_id: str, db: Session = Depends(get_db
 
 
 @router.post("/initiative/{initiative_id}/set")
-async def initiatief_vragen_instellen(initiative_id: str, data: dict, db: Session = Depends(get_db)):
+async def initiatief_vragen_instellen(
+    initiative_id: str,
+    data: dict,
+    user: User = Depends(perm_questions_update),
+    db: Session = Depends(get_db),
+):
     """Stel de centrale vragen voor een initiatief in (vervangt bestaande koppelingen).
 
     Accepteert: {"question_ids": ["uuid1", "uuid2", ...]}
@@ -455,7 +510,12 @@ async def initiatief_vragen_instellen(initiative_id: str, data: dict, db: Sessio
 
 
 @router.post("/{question_id}/files/upload")
-async def upload_vraag_bestand(question_id: str, file: UploadFile, db: Session = Depends(get_db)):
+async def upload_vraag_bestand(
+    question_id: str,
+    file: UploadFile,
+    user: User = Depends(perm_questions_files_manage),
+    db: Session = Depends(get_db),
+):
     """Upload een bestand bij een centrale vraag."""
     question = db.query(CentralQuestion).filter(
         CentralQuestion.id == question_id,
@@ -510,7 +570,11 @@ async def upload_vraag_bestand(question_id: str, file: UploadFile, db: Session =
 
 
 @router.get("/{question_id}/files")
-async def vraag_bestanden_lijst(question_id: str, db: Session = Depends(get_db)):
+async def vraag_bestanden_lijst(
+    question_id: str,
+    user: User = Depends(perm_questions_read),
+    db: Session = Depends(get_db),
+):
     """Lijst van bestanden bij een centrale vraag."""
     question = db.query(CentralQuestion).filter(
         CentralQuestion.id == question_id,
@@ -535,7 +599,13 @@ async def vraag_bestanden_lijst(question_id: str, db: Session = Depends(get_db))
 
 
 @router.get("/{question_id}/files/download/{file_id}")
-async def download_vraag_bestand(request: Request, question_id: str, file_id: str, db: Session = Depends(get_db)):
+async def download_vraag_bestand(
+    request: Request,
+    question_id: str,
+    file_id: str,
+    user: User = Depends(perm_questions_read),
+    db: Session = Depends(get_db),
+):
     """Download een bestand van een centrale vraag."""
     f = db.query(CentralQuestionFile).filter(
         CentralQuestionFile.id == file_id,
@@ -555,7 +625,12 @@ async def download_vraag_bestand(request: Request, question_id: str, file_id: st
 
 
 @router.delete("/{question_id}/files/{file_id}")
-async def verwijder_vraag_bestand(question_id: str, file_id: str, db: Session = Depends(get_db)):
+async def verwijder_vraag_bestand(
+    question_id: str,
+    file_id: str,
+    user: User = Depends(perm_questions_files_manage),
+    db: Session = Depends(get_db),
+):
     """Verwijder een bestand van een centrale vraag."""
     f = db.query(CentralQuestionFile).filter(
         CentralQuestionFile.id == file_id,

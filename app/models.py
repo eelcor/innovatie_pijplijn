@@ -383,13 +383,134 @@ class QuestionTag(Base):
     tag = relationship("Tag", back_populates="question_tags")
 
 
-# --- Auth (RBAC) ---
+# --- Auth (RBAC + Permissions) ---
 
-# Rol-constanten — elke rol erft rechten van lagere rollen
+# Rol-constanten
 ROLE_ADMIN = "admin"     # Alles: initiatieven, beheer, backups, gebruikers
 ROLE_EDITOR = "editor"   # Initiatieven CRUD, hypothesen, dossier, curaties, tags, MDS, vragen
 ROLE_VIEWER = "viewer"   # Alleen lezen: dashboard, detailpagina's
 ALL_ROLES = [ROLE_ADMIN, ROLE_EDITOR, ROLE_VIEWER]
+
+
+class Permission(Base):
+    """Permissie die aan rollen toegewezen kan worden.
+
+    Naming convention: <resource>.<action> (bijv. initiatives.create, users.delete)
+    """
+    __tablename__ = "permissions"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String(100), unique=True, nullable=False, index=True)
+    description = Column(String(255), nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=func.now(), nullable=False)
+
+
+class RolePermission(Base):
+    """Koppeling tussen een rol en een permissie.
+
+    Elke rij betekent: deze rol heeft deze permissie.
+    """
+    __tablename__ = "role_permissions"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    role_name = Column(String(50), nullable=False, index=True)
+    permission_id = Column(String(36), ForeignKey("permissions.id"), nullable=False)
+
+    permission = relationship("Permission")
+
+
+# Standaard permissies — wordt geseed bij migration / startup
+DEFAULT_PERMISSIONS = [
+    # Initiatieven
+    ("initiatives.read", "Initiatieven lezen"),
+    ("initiatives.create", "Initiatief aanmaken"),
+    ("initiatives.update", "Initiatief bewerken"),
+    ("initiatives.delete", "Initiatief verwijderen"),
+    # Hypothesen
+    ("hypotheses.read", "Hypothesen lezen"),
+    ("hypotheses.create", "Hypothese aanmaken"),
+    ("hypotheses.update", "Hypothese bewerken"),
+    ("hypotheses.delete", "Hypothese verwijderen"),
+    # Dossier notities
+    ("dossier.read", "Dossier lezen (notities & bestanden)"),
+    ("dossier.create", "Dossier item toevoegen (notitie of bestand)"),
+    ("dossier.update", "Notitie bewerken"),
+    ("dossier.delete", "Dossier item verwijderen"),
+    # Curaties
+    ("curations.read", "Curaties lezen"),
+    ("curations.create", "Curatie aanmaken"),
+    ("curations.update", "Curatie bewerken"),
+    ("curations.delete", "Curatie verwijderen"),
+    ("curation_items.manage", "Initiatieven in curatie beheren"),
+    # Centrale vragen
+    ("questions.read", "Centrale vragen lezen"),
+    ("questions.create", "Centrale vraag aanmaken"),
+    ("questions.update", "Centrale vraag bewerken"),
+    ("questions.delete", "Centrale vraag inactief zetten"),
+    ("questions.files.manage", "Bestanden bij vragen beheren"),
+    # MDS
+    ("mds.read", "MDS lezen"),
+    ("mds.create", "MDS aanmaken"),
+    ("mds.update", "MDS bewerken"),
+    ("mds.delete", "MDS inactief zetten"),
+    # Tags
+    ("tags.read", "Tags lezen"),
+    ("tags.create", "Tag aanmaken"),
+    ("tags.update", "Tag bewerken"),
+    ("tags.delete", "Tag inactief zetten"),
+    # AI
+    ("ai.generate", "AI-content genereren (hypothesen, narratief, one-pager)"),
+    # Export
+    ("export.excel", "Data exporteren naar Excel"),
+    # Gebruikersbeheer
+    ("users.read", "Gebruikerslijst bekijken"),
+    ("users.create", "Gebruiker aanmaken"),
+    ("users.update", "Gebruiker bewerken"),
+    ("users.delete", "Gebruiker verwijderen"),
+]
+
+# Standaard rol→permissie mapping
+DEFAULT_ROLE_PERMISSIONS = {
+    "admin": [
+        "initiatives.read", "initiatives.create", "initiatives.update", "initiatives.delete",
+        "hypotheses.read", "hypotheses.create", "hypotheses.update", "hypotheses.delete",
+        "dossier.read", "dossier.create", "dossier.update", "dossier.delete",
+        "curations.read", "curations.create", "curations.update", "curations.delete",
+        "curation_items.manage",
+        "questions.read", "questions.create", "questions.update", "questions.delete",
+        "questions.files.manage",
+        "mds.read", "mds.create", "mds.update", "mds.delete",
+        "tags.read", "tags.create", "tags.update", "tags.delete",
+        "ai.generate",
+        "export.excel",
+        "users.read", "users.create", "users.update", "users.delete",
+    ],
+    "editor": [
+        "initiatives.read", "initiatives.create", "initiatives.update", "initiatives.delete",
+        "hypotheses.read", "hypotheses.create", "hypotheses.update", "hypotheses.delete",
+        "dossier.read", "dossier.create", "dossier.update", "dossier.delete",
+        "curations.read", "curations.create", "curations.update", "curations.delete",
+        "curation_items.manage",
+        "questions.read", "questions.create", "questions.update", "questions.delete",
+        "questions.files.manage",
+        "mds.read", "mds.create", "mds.update", "mds.delete",
+        "tags.read", "tags.create", "tags.update", "tags.delete",
+        "ai.generate",
+        "export.excel",
+    ],
+    "viewer": [
+        "initiatives.read",
+        "hypotheses.read",
+        "dossier.read",
+        "curations.read",
+        "questions.read",
+        "mds.read",
+        "tags.read",
+        "export.excel",
+    ],
+}
+
 
 class User(Base):
     """Authenticatie-gebruiker met RBAC rollen.
@@ -398,6 +519,8 @@ class User(Base):
       - admin:   alles inclusief gebruikersbeheer en backups
       - editor:  initiatieven CRUD, hypothesen, dossier, curaties, tags, MDS, vragen
       - viewer:  alleen lezen (dashboard, detailpagina's)
+
+    Permissies worden opgehaald uit de RolePermission tabel.
     """
     __tablename__ = "users"
 
@@ -413,3 +536,12 @@ class User(Base):
     def is_admin(self) -> bool:
         """Backward-compatible property — returns True if role is admin."""
         return self.role == ROLE_ADMIN
+
+    @property
+    def permissions(self) -> set:
+        """Haal cached permissies voor deze gebruiker op.
+
+        Retourneert een set van perm names (bijv. {'initiatives.read', ...}).
+        """
+        from app.auth import get_role_permissions_cache
+        return get_role_permissions_cache().get(self.role, set())

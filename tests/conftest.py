@@ -65,7 +65,22 @@ def test_db_engine(test_db_path):
 
 
 @pytest.fixture(scope="function")
-def mock_user(test_db_engine):
+def seed_permissions(test_db_engine):
+    """Seed permissions en role_permissions in de test database."""
+    from app.auth import load_permissions_cache
+    _, TestSession, _ = test_db_engine
+    session = TestSession()
+
+    # Load permissions cache from the test DB (seeds it via migration or defaults)
+    load_permissions_cache(session)
+
+    yield
+
+    session.close()
+
+
+@pytest.fixture(scope="function")
+def mock_user(test_db_engine, seed_permissions):
     """Maak een mock admin gebruiker en override auth dependencies."""
     from app.models import User, ROLE_ADMIN
     from app.auth import hash_password, create_session_token

@@ -2,9 +2,15 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
+from app.auth import (
+    perm_mds_read,
+    perm_mds_create,
+    perm_mds_update,
+    perm_mds_delete,
+)
 from app.database import get_db
 from app.helpers import render_template
-from app.models import MDS, Initiative
+from app.models import User, MDS, Initiative
 from app.schemas import MDSCreate, MDSUpdate
 from sqlalchemy.orm import Session
 
@@ -12,7 +18,11 @@ router = APIRouter()
 
 
 @router.get("/lijst")
-async def mds_lijst(request: Request, db: Session = Depends(get_db)):
+async def mds_lijst(
+    request: Request,
+    user: User = Depends(perm_mds_read),
+    db: Session = Depends(get_db),
+):
     """Overzichtspagina van alle actieve MDS."""
     mds_list = (
         db.query(MDS)
@@ -40,7 +50,10 @@ async def mds_lijst(request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/json")
-async def mds_json(db: Session = Depends(get_db)):
+async def mds_json(
+    user: User = Depends(perm_mds_read),
+    db: Session = Depends(get_db),
+):
     """JSON endpoint voor alle actieve MDS."""
     mds_list = (
         db.query(MDS)
@@ -69,7 +82,12 @@ async def mds_json(db: Session = Depends(get_db)):
 
 
 @router.get("/{mds_id}")
-async def mds_detail(request: Request, mds_id: str, db: Session = Depends(get_db)):
+async def mds_detail(
+    request: Request,
+    mds_id: str,
+    user: User = Depends(perm_mds_read),
+    db: Session = Depends(get_db),
+):
     """Detailpagina voor een MDS met alle gekoppelde initiatieven."""
     mds = db.query(MDS).filter(MDS.id == mds_id).first()
     if not mds:
@@ -92,7 +110,11 @@ async def mds_detail(request: Request, mds_id: str, db: Session = Depends(get_db
 
 
 @router.post("/create")
-async def mds_aanmaken(data: MDSCreate, db: Session = Depends(get_db)):
+async def mds_aanmaken(
+    data: MDSCreate,
+    user: User = Depends(perm_mds_create),
+    db: Session = Depends(get_db),
+):
     """Nieuwe MDS aanmaken."""
     # Check of er al een identieke MDS bestaat
     existing = (
@@ -126,7 +148,12 @@ async def mds_aanmaken(data: MDSCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/{mds_id}")
-async def mds_bewerken(mds_id: str, data: MDSUpdate, db: Session = Depends(get_db)):
+async def mds_bewerken(
+    mds_id: str,
+    data: MDSUpdate,
+    user: User = Depends(perm_mds_update),
+    db: Session = Depends(get_db),
+):
     """MDS bewerken."""
     mds = db.query(MDS).filter(MDS.id == mds_id).first()
     if not mds:
@@ -148,7 +175,11 @@ async def mds_bewerken(mds_id: str, data: MDSUpdate, db: Session = Depends(get_d
 
 
 @router.delete("/{mds_id}")
-async def mds_verwijderen(mds_id: str, db: Session = Depends(get_db)):
+async def mds_verwijderen(
+    mds_id: str,
+    user: User = Depends(perm_mds_delete),
+    db: Session = Depends(get_db),
+):
     """MDS soft-delete (zet op inactief)."""
     mds = db.query(MDS).filter(MDS.id == mds_id).first()
     if not mds:

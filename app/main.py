@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
-from app.auth import ensure_admin_user, router as auth_router, require_admin
+from app.auth import ensure_admin_user, router as auth_router, require_admin, load_permissions_cache
 from app.csrf import CSRFMiddleware, AuthMiddleware, router as csrf_router
 from app.database import init_db, get_db, DB_PATH
 from app.helpers import BASE_DIR, templates, get_base_url
@@ -59,9 +59,11 @@ async def lifespan(app: FastAPI):
     os.makedirs(backup_dir, exist_ok=True)
 
     # Creëer admin gebruiker als APP_ADMIN_PASSWORD is ingesteld
+    # Laad permissions cache voor RBAC
     db_admin = next(get_db())
     try:
         ensure_admin_user(db_admin)
+        load_permissions_cache(db_admin)
     finally:
         db_admin.close()
 

@@ -9,11 +9,16 @@ import re
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
+from app.auth import (
+    perm_ai_generate,
+    perm_initiatives_read,
+    perm_curations_read,
+)
 from app.database import get_db
 from app import ai_client
 from app.helpers import render_template
 from app.models import (
-    Initiative, Hypothesis, DossierNote, Curation, CurationItem,
+    User, Initiative, Hypothesis, DossierNote, Curation, CurationItem,
     CentralQuestion, InitiativeQuestion, Tag, InitiativeTag, QuestionTag, MDS,
     OnePager, CurationNarrative,
 )
@@ -241,7 +246,10 @@ def _get_curation_with_details(db: Session, curation_id: str) -> dict | None:
 
 @router.get("/ai/initiatieven/{initiative_id}/suggest-hypotheses")
 async def suggest_hypotheses_page(
-    request: Request, initiative_id: str, db: Session = Depends(get_db)
+    request: Request,
+    initiative_id: str,
+    user: User = Depends(perm_ai_generate),
+    db: Session = Depends(get_db),
 ):
     """Toon de hypothese-suggesties interface op het initiatief detail."""
     db.flush()
@@ -258,7 +266,9 @@ async def suggest_hypotheses_page(
 
 @router.post("/api/ai/initiatieven/{initiative_id}/suggest-hypotheses")
 async def suggest_hypotheses_api(
-    initiative_id: str, db: Session = Depends(get_db)
+    initiative_id: str,
+    user: User = Depends(perm_ai_generate),
+    db: Session = Depends(get_db),
 ):
     """Genereer hypothese-suggesties voor een initiatief."""
     db.flush()
@@ -330,7 +340,10 @@ async def suggest_hypotheses_api(
 
 @router.get("/ai/curaties/{curation_id}/narratief")
 async def narratief_page(
-    request: Request, curation_id: str, db: Session = Depends(get_db)
+    request: Request,
+    curation_id: str,
+    user: User = Depends(perm_ai_generate),
+    db: Session = Depends(get_db),
 ):
     """Toon de narratief-generatie interface op de curatie detailpagina."""
     db.flush()
@@ -346,7 +359,11 @@ async def narratief_page(
 
 
 @router.post("/api/ai/curaties/{curation_id}/narratief")
-async def narratief_api(curation_id: str, db: Session = Depends(get_db)):
+async def narratief_api(
+    curation_id: str,
+    user: User = Depends(perm_ai_generate),
+    db: Session = Depends(get_db),
+):
     """Genereer een narratief voor een curatie."""
     db.flush()
     data = _get_curation_with_details(db, curation_id)
@@ -409,7 +426,11 @@ async def narratief_api(curation_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/api/ai/curaties/{curation_id}/suggest-initiatives")
-async def suggest_initiatives_api(curation_id: str, db: Session = Depends(get_db)):
+async def suggest_initiatives_api(
+    curation_id: str,
+    user: User = Depends(perm_ai_generate),
+    db: Session = Depends(get_db),
+):
     """Suggesteer initiatieven die passen bij een curatie.
 
     Schaalbaar tot honderden initiatieven via keyword pre-filtering:
@@ -517,6 +538,7 @@ async def suggest_initiatives_api(curation_id: str, db: Session = Depends(get_db
 async def one_pager_api(
     initiative_id: str,
     payload: dict = Body(default={}),
+    user: User = Depends(perm_ai_generate),
     db: Session = Depends(get_db),
 ):
     """Genereer een one-pager samenvatting voor een initiatief.
@@ -615,7 +637,11 @@ async def one_pager_api(
 
 
 @router.get("/api/ai/initiatieven/{initiative_id}/one-pagers")
-async def list_one_pagers(initiative_id: str, db: Session = Depends(get_db)):
+async def list_one_pagers(
+    initiative_id: str,
+    user: User = Depends(perm_initiatives_read),
+    db: Session = Depends(get_db),
+):
     """Haal alle opgeslagen one-pagers op voor een initiatief."""
     initiative = db.query(Initiative).filter(Initiative.id == initiative_id).first()
     if not initiative:
@@ -641,7 +667,10 @@ async def list_one_pagers(initiative_id: str, db: Session = Depends(get_db)):
 
 @router.get("/api/ai/initiatieven/{initiative_id}/one-pagers/{one_pager_id}")
 async def get_one_pager(
-    initiative_id: str, one_pager_id: str, db: Session = Depends(get_db)
+    initiative_id: str,
+    one_pager_id: str,
+    user: User = Depends(perm_initiatives_read),
+    db: Session = Depends(get_db),
 ):
     """Haal één specifieke one-pager op."""
     p = db.query(OnePager).filter(
@@ -666,6 +695,7 @@ async def update_one_pager(
     initiative_id: str,
     one_pager_id: str,
     payload: dict = Body(default={}),
+    user: User = Depends(perm_ai_generate),
     db: Session = Depends(get_db),
 ):
     """Bewerk een opgeslagen one-pager."""
@@ -697,7 +727,10 @@ async def update_one_pager(
 
 @router.delete("/api/ai/initiatieven/{initiative_id}/one-pagers/{one_pager_id}")
 async def delete_one_pager(
-    initiative_id: str, one_pager_id: str, db: Session = Depends(get_db)
+    initiative_id: str,
+    one_pager_id: str,
+    user: User = Depends(perm_ai_generate),
+    db: Session = Depends(get_db),
 ):
     """Verwijder een opgeslagen one-pager."""
     p = db.query(OnePager).filter(
@@ -716,6 +749,7 @@ async def delete_one_pager(
 async def accept_hypothesis(
     initiative_id: str,
     payload: dict = Body(default={}),
+    user: User = Depends(perm_ai_generate),
     db: Session = Depends(get_db),
 ):
     """Accepteer een AI-gesuggereerde hypothese en voeg toe aan het initiatief."""
@@ -757,7 +791,11 @@ async def accept_hypothesis(
 # ====================================================================
 
 @router.get("/api/ai/curaties/{curation_id}/narratieven")
-async def list_curation_narratives(curation_id: str, db: Session = Depends(get_db)):
+async def list_curation_narratives(
+    curation_id: str,
+    user: User = Depends(perm_curations_read),
+    db: Session = Depends(get_db),
+):
     """Haal alle opgeslagen narratieven op voor een curatie."""
     curation = db.query(Curation).filter(Curation.id == curation_id).first()
     if not curation:
@@ -782,7 +820,10 @@ async def list_curation_narratives(curation_id: str, db: Session = Depends(get_d
 
 @router.get("/api/ai/curaties/{curation_id}/narratieven/{narrative_id}")
 async def get_curation_narrative(
-    curation_id: str, narrative_id: str, db: Session = Depends(get_db)
+    curation_id: str,
+    narrative_id: str,
+    user: User = Depends(perm_curations_read),
+    db: Session = Depends(get_db),
 ):
     """Haal één specifiek narratief op."""
     n = db.query(CurationNarrative).filter(
@@ -805,6 +846,7 @@ async def update_curation_narrative(
     curation_id: str,
     narrative_id: str,
     payload: dict = Body(default={}),
+    user: User = Depends(perm_ai_generate),
     db: Session = Depends(get_db),
 ):
     """Bewerk een opgeslagen narratief."""
@@ -830,7 +872,10 @@ async def update_curation_narrative(
 
 @router.delete("/api/ai/curaties/{curation_id}/narratieven/{narrative_id}")
 async def delete_curation_narrative(
-    curation_id: str, narrative_id: str, db: Session = Depends(get_db)
+    curation_id: str,
+    narrative_id: str,
+    user: User = Depends(perm_ai_generate),
+    db: Session = Depends(get_db),
 ):
     """Verwijder een opgeslagen narratief."""
     n = db.query(CurationNarrative).filter(

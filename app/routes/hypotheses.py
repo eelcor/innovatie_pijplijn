@@ -2,8 +2,14 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from app.auth import (
+    perm_hypotheses_read,
+    perm_hypotheses_create,
+    perm_hypotheses_update,
+    perm_hypotheses_delete,
+)
 from app.database import get_db
-from app.models import Hypothesis
+from app.models import User, Hypothesis
 from app.schemas import HypothesisCreate, HypothesisUpdate
 from app.search import update_fts_hypothesis
 from sqlalchemy.orm import Session
@@ -12,7 +18,11 @@ router = APIRouter()
 
 
 @router.post("/create")
-async def hypothese_aanmaken(data: HypothesisCreate, db: Session = Depends(get_db)):
+async def hypothese_aanmaken(
+    data: HypothesisCreate,
+    user: User = Depends(perm_hypotheses_create),
+    db: Session = Depends(get_db),
+):
     """F3 — Hypothese (of sub-hypothese) toevoegen."""
     if data.parent_hypothesis_id:
         parent = db.query(Hypothesis).filter(
@@ -48,7 +58,12 @@ async def hypothese_aanmaken(data: HypothesisCreate, db: Session = Depends(get_d
 
 
 @router.put("/{hypothesis_id}")
-async def hypothese_bewerken(hypothesis_id: str, data: HypothesisUpdate, db: Session = Depends(get_db)):
+async def hypothese_bewerken(
+    hypothesis_id: str,
+    data: HypothesisUpdate,
+    user: User = Depends(perm_hypotheses_update),
+    db: Session = Depends(get_db),
+):
     """F3 — Hypothese bewerken met validatie leeruitkomst."""
     hypothesis = db.query(Hypothesis).filter(
         Hypothesis.id == hypothesis_id
@@ -90,7 +105,11 @@ async def hypothese_bewerken(hypothesis_id: str, data: HypothesisUpdate, db: Ses
 
 
 @router.delete("/{hypothesis_id}")
-async def hypothese_verwijderen(hypothesis_id: str, db: Session = Depends(get_db)):
+async def hypothese_verwijderen(
+    hypothesis_id: str,
+    user: User = Depends(perm_hypotheses_delete),
+    db: Session = Depends(get_db),
+):
     """Verwijder een hypothese (en eventuele sub-hypothesen)."""
     hypothesis = db.query(Hypothesis).filter(
         Hypothesis.id == hypothesis_id
@@ -104,7 +123,11 @@ async def hypothese_verwijderen(hypothesis_id: str, db: Session = Depends(get_db
 
 
 @router.get("/initiative/{initiative_id}")
-async def hypothesen_per_initiatief(initiative_id: str, db: Session = Depends(get_db)):
+async def hypothesen_per_initiatief(
+    initiative_id: str,
+    user: User = Depends(perm_hypotheses_read),
+    db: Session = Depends(get_db),
+):
     """Alle hypothesen voor een initiatief (inclusief sub-hypothesen)."""
     hypotheses = (
         db.query(Hypothesis)

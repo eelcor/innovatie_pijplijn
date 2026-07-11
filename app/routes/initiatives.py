@@ -5,10 +5,16 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 import json
 from datetime import datetime
 
+from app.auth import (
+    perm_initiatives_read,
+    perm_initiatives_create,
+    perm_initiatives_update,
+    perm_initiatives_delete,
+)
 from app.database import get_db
 from app.helpers import render_template
 from app.models import (
-    Initiative, Hypothesis, InitiativeQuestion, CentralQuestion,
+    User, Initiative, Hypothesis, InitiativeQuestion, CentralQuestion,
     MDS, Tag, InitiativeTag, TimelineEvent,
 )
 from app.schemas import (
@@ -56,7 +62,11 @@ def _add_timeline_event(db, initiative_id: str, event_type: str, title: str, des
 
 
 @router.get("/lijst")
-async def initiatieven_lijst(request: Request, db: Session = Depends(get_db)):
+async def initiatieven_lijst(
+    request: Request,
+    user: User = Depends(perm_initiatives_read),
+    db: Session = Depends(get_db),
+):
     """Initiatieven overzichtspagina."""
     initiatives = (
         db.query(Initiative)
@@ -75,7 +85,12 @@ async def initiatieven_lijst(request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/detail/{initiative_id}")
-async def initiatief_detail(request: Request, initiative_id: str, db: Session = Depends(get_db)):
+async def initiatief_detail(
+    request: Request,
+    initiative_id: str,
+    user: User = Depends(perm_initiatives_read),
+    db: Session = Depends(get_db),
+):
     """Detailpagina voor een initiatief."""
     initiative = db.query(Initiative).filter(
         Initiative.id == initiative_id
@@ -140,7 +155,11 @@ async def initiatief_detail(request: Request, initiative_id: str, db: Session = 
 
 
 @router.post("/create")
-async def initiatief_aanmaken(data: InitiativeCreate, db: Session = Depends(get_db)):
+async def initiatief_aanmaken(
+    data: InitiativeCreate,
+    user: User = Depends(perm_initiatives_create),
+    db: Session = Depends(get_db),
+):
     """F1 — Initiatief aanmaken.
 
     Gebruikt een atomaire transactie: initiatief + koppelingen + FTS + changelog
@@ -214,7 +233,12 @@ async def initiatief_aanmaken(data: InitiativeCreate, db: Session = Depends(get_
 
 
 @router.put("/{initiative_id}")
-async def initiatief_bewerken(initiative_id: str, data: InitiativeUpdate, db: Session = Depends(get_db)):
+async def initiatief_bewerken(
+    initiative_id: str,
+    data: InitiativeUpdate,
+    user: User = Depends(perm_initiatives_update),
+    db: Session = Depends(get_db),
+):
     """F2 — Initiatief bewerken."""
     initiative = db.query(Initiative).filter(
         Initiative.id == initiative_id
@@ -310,7 +334,12 @@ async def initiatief_bewerken(initiative_id: str, data: InitiativeUpdate, db: Se
 
 
 @router.post("/{initiative_id}/stop")
-async def initiatief_stoppen(initiative_id: str, data: InitiativeStop, db: Session = Depends(get_db)):
+async def initiatief_stoppen(
+    initiative_id: str,
+    data: InitiativeStop,
+    user: User = Depends(perm_initiatives_update),
+    db: Session = Depends(get_db),
+):
     """F5 — Stoppen met leeruitkomst."""
     initiative = db.query(Initiative).filter(
         Initiative.id == initiative_id
@@ -343,7 +372,11 @@ async def initiatief_stoppen(initiative_id: str, data: InitiativeStop, db: Sessi
 
 
 @router.delete("/{initiative_id}")
-async def initiatief_verwijderen(initiative_id: str, db: Session = Depends(get_db)):
+async def initiatief_verwijderen(
+    initiative_id: str,
+    user: User = Depends(perm_initiatives_delete),
+    db: Session = Depends(get_db),
+):
     """Verwijder een initiatief."""
     initiative = db.query(Initiative).filter(
         Initiative.id == initiative_id
@@ -357,7 +390,10 @@ async def initiatief_verwijderen(initiative_id: str, db: Session = Depends(get_d
 
 
 @router.get("/json")
-async def initiatieven_json(db: Session = Depends(get_db)):
+async def initiatieven_json(
+    user: User = Depends(perm_initiatives_read),
+    db: Session = Depends(get_db),
+):
     """JSON endpoint voor HTMX / AJAX."""
     initiatives = (
         db.query(Initiative)
@@ -402,7 +438,11 @@ async def initiatieven_json(db: Session = Depends(get_db)):
 
 
 @router.get("/{initiative_id}")
-async def initiatief_json(initiative_id: str, db: Session = Depends(get_db)):
+async def initiatief_json(
+    initiative_id: str,
+    user: User = Depends(perm_initiatives_read),
+    db: Session = Depends(get_db),
+):
     """JSON endpoint voor één initiatief."""
     initiative = db.query(Initiative).filter(
         Initiative.id == initiative_id
@@ -447,7 +487,11 @@ async def initiatief_json(initiative_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/{initiative_id}/changes")
-async def initiatief_changes(initiative_id: str, db: Session = Depends(get_db)):
+async def initiatief_changes(
+    initiative_id: str,
+    user: User = Depends(perm_initiatives_read),
+    db: Session = Depends(get_db),
+):
     """Wijzigingen-logboek voor een initiatief (F2)."""
     initiative = db.query(Initiative).filter(
         Initiative.id == initiative_id
@@ -463,7 +507,11 @@ async def initiatief_changes(initiative_id: str, db: Session = Depends(get_db)):
 # --- Tijdlijn API ---
 
 @router.get("/{initiative_id}/timeline")
-async def initiatief_tijdlijn(initiative_id: str, db: Session = Depends(get_db)):
+async def initiatief_tijdlijn(
+    initiative_id: str,
+    user: User = Depends(perm_initiatives_read),
+    db: Session = Depends(get_db),
+):
     """Haal alle tijdlijn-gebeurtenissen op voor een initiatief."""
     initiative = db.query(Initiative).filter(
         Initiative.id == initiative_id
@@ -488,7 +536,12 @@ async def initiatief_tijdlijn(initiative_id: str, db: Session = Depends(get_db))
 
 
 @router.post("/{initiative_id}/timeline/milestone")
-async def add_milestone(initiative_id: str, data: dict, db: Session = Depends(get_db)):
+async def add_milestone(
+    initiative_id: str,
+    data: dict,
+    user: User = Depends(perm_initiatives_update),
+    db: Session = Depends(get_db),
+):
     """Voeg een handmatige mijlpaal toe aan de tijdlijn."""
     initiative = db.query(Initiative).filter(
         Initiative.id == initiative_id

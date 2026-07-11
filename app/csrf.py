@@ -47,7 +47,6 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         "/api/auth/logout",
         "/api/auth/csrf-token",
         "/api/auth/me",
-        "/api/auth/users",
         "/login",
         "/health",
     }
