@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, field_validator
 
 # --- Enums als Literals voor validatie ---
 
-InitiativePhase = Literal["verkenning", "experiment", "pilot", "opschaling"]
+InitiativePhase = Literal["idee", "verkenning", "experiment", "pilot", "opschaling"]
 InitiativeStatus = Literal["actief", "gestopt", "afgerond"]
 Horizon = Literal["h1", "h2", "h3"]
 TypeAiGebruik = Literal[
@@ -27,7 +27,7 @@ HypothesisStatus = Literal["open", "bevestigd", "weerlegd", "vervallen"]
 class InitiativeCreate(BaseModel):
     title: str = Field(..., min_length=1)
     description: Optional[str] = None
-    phase: InitiativePhase = Field(default="verkenning")
+    phase: InitiativePhase = Field(default="idee")
     horizon: Optional[Horizon] = None
     mds: Optional[str] = None  # legacy: vrij tekstveld
     mds_id: Optional[str] = None  # H2: MDS als entiteit

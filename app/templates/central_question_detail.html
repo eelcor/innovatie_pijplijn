@@ -29,6 +29,12 @@
     {% endif %}
   </div>
   <div class="header-actions">
+    <button class="btn btn-danger" onclick="deleteQuestion()" style="margin-right: 8px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h10"/>
+      </svg>
+      Verwijderen
+    </button>
     <button class="btn btn-secondary" onclick="openEditQuestionModal()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
@@ -264,6 +270,20 @@ async function removeFile(fileId) {
     });
     showToast('Bestand verwijderd');
     location.reload();
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function deleteQuestion() {
+  const confirmMsg = 'Deze centrale vraag verwijderen? De koppeling met initiatieven wordt losgemaakt.';
+  if (!confirm(confirmMsg)) return;
+  try {
+    await apiCall('/api/vragen/' + questionId, {
+      method: 'DELETE',
+    });
+    showToast('Centrale vraag verwijderd');
+    window.location.href = '{{ url_for("questions_list") }}';
   } catch (err) {
     console.error(err);
   }

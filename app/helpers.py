@@ -89,6 +89,7 @@ templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "app", "templates")
 def phase_label(phase: str) -> str:
     """Fase-naam in leesbare vorm."""
     labels = {
+        "idee": "Idee",
         "verkenning": "Verkenning",
         "experiment": "Experiment",
         "pilot": "Pilot",
@@ -280,7 +281,7 @@ def render_template(template_name: str, request, **context):
     Starlette 1.0 API: TemplateResponse(request, name, context)
     """
     ctx = {
-        "phases": ["verkenning", "experiment", "pilot", "opschaling"],
+        "phases": ["idee", "verkenning", "experiment", "pilot", "opschaling"],
         "statuses": ["actief", "gestopt", "afgerond"],
         "horizons": ["h1", "h2", "h3"],
         **context,

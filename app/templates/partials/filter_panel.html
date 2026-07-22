@@ -21,8 +21,8 @@
         <button class="filter-option selected" data-value="" onclick="selectFilter(this)">
           <span class="filter-radio-dot"></span> Alle fasen
         </button>
-        {% set phase_labels = {'verkenning':'Verkenning','experiment':'Experiment','pilot':'Pilot','opschaling':'Opschaling'} %}
-        {% for p in ['verkenning','experiment','pilot','opschaling'] %}
+        {% set phase_labels = {'idee':'Idee','verkenning':'Verkenning','experiment':'Experiment','pilot':'Pilot','opschaling':'Opschaling'} %}
+        {% for p in ['idee','verkenning','experiment','pilot','opschaling'] %}
         <button class="filter-option" data-value="{{ p }}" onclick="selectFilter(this)">
           <span class="filter-radio-dot"></span> {{ phase_labels[p] }}
         </button>
@@ -229,7 +229,7 @@
 
             data.initiatives.forEach(function(init) {
               var phaseClass = init.status === 'gestopt' ? 'gestopt' : init.phase;
-              var phaseLabels = {verkenning:'Verkenning', experiment:'Experiment', pilot:'Pilot', opschaling:'Opschaling'};
+              var phaseLabels = {idee:'Idee', verkenning:'Verkenning', experiment:'Experiment', pilot:'Pilot', opschaling:'Opschaling'};
               var phaseName = phaseLabels[init.phase] || init.phase;
 
               var horizonHtml = '';

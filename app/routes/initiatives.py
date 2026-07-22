@@ -267,7 +267,7 @@ async def initiatief_bewerken(
 
                 # Log ook tijdlijn-gebeurtenis voor fase/status wijzigingen
                 if field == "phase":
-                    phase_labels = {"verkenning": "Verkenning", "experiment": "Experiment", "pilot": "Pilot", "opschaling": "Opschaling"}
+                    phase_labels = {"idee": "Idee", "verkenning": "Verkenning", "experiment": "Experiment", "pilot": "Pilot", "opschaling": "Opschaling"}
                     _add_timeline_event(
                         db, initiative.id,
                         "phase_change",

@@ -26,9 +26,9 @@ class Initiative(Base):
     title = Column(Text, nullable=False)
     description = Column(Text, nullable=True)  # markdown
     phase = Column(
-        Enum("verkenning", "experiment", "pilot", "opschaling", name="initiative_phase"),
+        Enum("idee", "verkenning", "experiment", "pilot", "opschaling", name="initiative_phase"),
         nullable=False,
-        default="verkenning",
+        default="idee",
     )
     status = Column(
         Enum("actief", "gestopt", "afgerond", name="initiative_status"),

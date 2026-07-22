@@ -32,6 +32,8 @@
       --stopped-subtle: oklch(95% 0.02 310);
 
       /* Phase colors */
+      --idee: oklch(64% 0.14 85);
+      --idee-subtle: oklch(95% 0.03 85);
       --verkenning: oklch(58% 0.14 290);
       --verkenning-subtle: oklch(94% 0.03 290);
       --experiment: oklch(64% 0.14 55);
@@ -489,6 +491,7 @@
       line-height: 1.35;
     }
 
+    .phase-idee { background: var(--idee-subtle); color: var(--idee); }
     .phase-verkenning { background: var(--verkenning-subtle); color: var(--verkenning); }
     .phase-experiment { background: var(--experiment-subtle); color: var(--experiment); }
     .phase-pilot { background: var(--pilot-subtle); color: var(--pilot); }
@@ -1298,7 +1301,8 @@
             <div class="form-field">
               <label class="form-label form-label-required">Fase</label>
               <select name="phase" class="form-select" required>
-                <option value="verkenning" selected>Verkenning</option>
+                <option value="idee" selected>Idee</option>
+                <option value="verkenning">Verkenning</option>
                 <option value="experiment">Experiment</option>
                 <option value="pilot">Pilot</option>
                 <option value="opschaling">Opschaling</option>
@@ -1500,6 +1504,7 @@
     // Phase display name
     function phaseLabel(phase) {
       const labels = {
+        'idee': 'Idee',
         'verkenning': 'Verkenning',
         'experiment': 'Experiment',
         'pilot': 'Pilot',

@@ -29,7 +29,7 @@ async def dashboard_page(
         .all()
     )
     phase_counts = {row[0]: row[1] for row in phase_rows}
-    for phase in ["verkenning", "experiment", "pilot", "opschaling"]:
+    for phase in ["idee", "verkenning", "experiment", "pilot", "opschaling"]:
         phase_counts.setdefault(phase, 0)
 
     # Aantal per horizon (SQL aggregation)

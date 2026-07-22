@@ -39,6 +39,7 @@ _ALT_ROW_FILL = PatternFill(start_color="F8FAFC", end_color="F8FAFC", fill_type=
 
 # Fasekleuren voor conditional styling
 _PHASE_COLORS = {
+    "idee": ("D97706", "#FEF3C7"),
     "verkenning": ("4F46E5", "EEF2FF"),
     "experiment": ("EA580C", "#FFF7ED"),
     "pilot": ("059669", "ECFDF5"),
