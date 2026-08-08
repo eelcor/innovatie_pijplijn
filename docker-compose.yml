@@ -1,18 +1,11 @@
+# =============================================================================
 # Innovatiepijplijn — Docker Compose configuratie
-#
-# Omgevingsvariabelen (configureerbaar via .env bestand):
-#   APP_PORT    — Poort voor de webapplicatie  (standaard: 8000)
-#   APP_HOST    — Host waarnaar uvicorn luistert (standaard: 0.0.0.0)
-#   APP_ENV     — Omgeving: development, staging, production
-#   AI_ENABLED  — AI features aan/uit
-#   MODEL_URL   — URL van het taalmodel
-#   MODEL_NAME  — Naam van het model
-#   LOG_LEVEL   — Logging level (INFO, DEBUG, ERROR)
-#   LOG_FORMAT  — Log format (console, json)
-#
+# =============================================================================
 # Gebruik:
-#   docker compose up -d
-#   Of met custom poort: APP_PORT=9000 docker compose up -d
+#   docker compose up -d              # Start de applicatie
+#   docker compose up -d --build      # Rebuild en start
+#   APP_PORT=9000 docker compose up -d  # Custom poort
+# =============================================================================
 
 services:
   innovatiepijplijn:
@@ -24,16 +17,24 @@ services:
     ports:
       - "${APP_PORT:-8000}:8000"
     environment:
-      - APP_HOST=${APP_HOST:-0.0.0.0}
+      # Applicatie
+      - APP_HOST=0.0.0.0
       - APP_PORT=8000
       - APP_ENV=${APP_ENV:-production}
+      - APP_BASE_URL=${APP_BASE_URL:-http://localhost:${APP_PORT:-8000}}
+      # Database
       - DATABASE_PATH=${DATABASE_PATH:-/app/data/innovatiepijplijn.db}
       - BACKUP_DIR=${BACKUP_DIR:-/app/data/backups}
+      # Admin account (automatisch aangemaakt bij eerste start)
+      - APP_ADMIN_USERNAME=${APP_ADMIN_USERNAME:-admin}
+      - APP_ADMIN_PASSWORD=${APP_ADMIN_PASSWORD:-verander-dit}
+      # AI / Taalmodel
       - MODEL_URL=${MODEL_URL:-}
       - MODEL_NAME=${MODEL_NAME:-}
       - MODEL_API_KEY=${MODEL_API_KEY:-}
       - AI_ENABLED=${AI_ENABLED:-false}
       - AI_REQUEST_TIMEOUT=${AI_REQUEST_TIMEOUT:-600}
+      # Logging
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - LOG_FORMAT=${LOG_FORMAT:-json}
     volumes:

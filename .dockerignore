@@ -2,6 +2,13 @@
 __pycache__
 *.pyc
 *.pyo
+*.pyd
+.eggs
+*.egg-info
+dist/
+build/
+
+# Virtual environment
 .venv
 .pytest_cache
 
@@ -9,31 +16,55 @@ __pycache__
 .git
 .gitignore
 
-# IDE
+# IDE / Editor
 .vscode
 .idea
 *.swp
 *.swo
+*.swn
 
-# OS
+# OS files
 .DS_Store
 Thumbs.db
 
-# Test files (not needed in production)
+# Test files (not needed in production image)
 tests/
 
-# Documentation
+# Documentation (not needed at runtime)
 PRD.md
 PLAN.md
+DESIGN.md
 
-# Design files
+# Design assets
 Design files/
 
-# Local data (will be created in container)
+# Local data (created fresh in container)
 data/*.db
 data/*.db-shm
 data/*.db-wal
 data/uploads/*
+data/backups/*
 
-# Environment
+# Environment files (secrets)
 .env
+.env.local
+
+# Scripts (not needed at runtime)
+scripts/
+
+# FastContext cache
+.fastcontext/
+
+# Install scripts
+install-fastcontext-laptop.sh
+
+# Source data files (imported into DB, not needed at runtime)
+initiatives/
+Inventarisatie_AI_initiatieven_v0.1.md
+
+# Alembic (migrations run at build or startup)
+alembic/
+alembic.ini
+
+# Lock file (used during build only, already synced)
+uv.lock

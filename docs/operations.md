@@ -43,6 +43,12 @@ docker compose ps
 docker compose logs -f innovatiepijplijn
 ```
 
+Of gebruik het geautomatiseerde installatiescript:
+
+```bash
+./scripts/install.sh
+```
+
 ### 3. Lokaal (ontwikkeling)
 
 ```bash
@@ -70,6 +76,7 @@ curl http://localhost:8000/health | python -m json.tool
 ```
 
 Voorbeeld respons:
+
 ```json
 {
   "status": "healthy",
@@ -94,19 +101,28 @@ curl http://localhost:8000/api/admin/config | python -m json.tool
 
 ### Logging
 
-**Console mode** (standaard, leesbaar):
+**Console mode** (leesbaar, voor ontwikkeling):
+
+```bash
+# In .env:
+LOG_FORMAT=console
+LOG_LEVEL=DEBUG
+```
+
 ```
 [2025-01-01 12:00:00] INFO     app.main: Innovatiepijplijn start-up
 [2025-01-01 12:00:00] INFO     app.main: Database: /app/data/innovatiepijplijn.db
 ```
 
-**JSON mode** (voor log-aggregators):
-```bash
-# Zet in .env:
-LOG_FORMAT=json
-LOG_LEVEL=DEBUG
+**JSON mode** (standaard, voor productie en log-aggregators):
 
-# Logs zijn nu machine-readable JSON per regel
+```bash
+# In .env:
+LOG_FORMAT=json
+LOG_LEVEL=INFO
+```
+
+```json
 {"timestamp": "2025-...", "level": "INFO", "logger": "app.main", "message": "..."}
 ```
 
@@ -114,14 +130,14 @@ LOG_LEVEL=DEBUG
 
 ## Backups
 
-### Database backup maken
+### Database backup maken (via API)
 
 ```bash
-# Via API triggeren
 curl -X POST http://localhost:8000/api/admin/backup | python -m json.tool
 ```
 
 Voorbeeld respons:
+
 ```json
 {
   "success": true,
@@ -129,6 +145,8 @@ Voorbeeld respons:
   "uploads_backup": "/app/data/backups/innovatiepijplijn_uploads_20250101_120000.zip"
 }
 ```
+
+> **Let op:** Er worden maximaal 10 database backups automatisch bewaard. Oudere backups worden verwijderd bij een nieuwe backup.
 
 ### Beschikbare backups bekijken
 
@@ -141,8 +159,6 @@ curl http://localhost:8000/api/admin/backups | python -m json.tool
 ```bash
 curl -X DELETE "http://localhost:8000/api/admin/backups/innovatiepijplijn_db_20250101_120000.db"
 ```
-
-> **Let op:** Er worden maximaal 10 database backups automatisch bewaard. Oudere backups worden verwijderd bij een nieuwe backup.
 
 ### Automatische backups (cron)
 
@@ -232,9 +248,19 @@ AI_REQUEST_TIMEOUT=900
 
 ### Nieuwe versie installeren
 
+Gebruik het updatescript:
+
+```bash
+./scripts/update.sh
+```
+
+Dit script maakt automatisch een database backup, haalt nieuwste code en rebuild het Docker image.
+
+### Handmatige upgrade
+
 ```bash
 # Git pull naar nieuwste commit
-git pull origin main
+git pull origin master
 
 # Dependencies updaten (indien nodig)
 source .venv/bin/activate && uv sync --frozen
@@ -262,6 +288,9 @@ docker compose logs innovatiepijplijn
 
 # Check poort conflict
 lsof -i :8000
+
+# Check health status
+docker inspect --format='{{.State.Health.Status}}' innovatiepijplijn
 ```
 
 ### Database fouten
@@ -306,3 +335,29 @@ LOG_LEVEL=DEBUG
 | Disk (data) | 10 MB | 1 GB (met backups/uploads) |
 
 > **Let op:** Het AI-model draait apart en heeft eigen resources nodig (afhankelijk van modelgrootte).
+
+---
+
+## Docker Compose — Geavanceerd
+
+### Resource limits aanpassen
+
+```bash
+# Via .env of command line:
+CPU_LIMIT=4.0 MEMORY_LIMIT=4G docker compose up -d
+```
+
+### Custom volumes (host-mounted in plaats van Docker volumes)
+
+Pas `docker-compose.yml` aan:
+
+```yaml
+volumes:
+  - ./data:/app/data
+```
+
+> **Waarschuwing:** Host-mounted volumes omzeilen de Docker volume isolatie. Zorg dat permissies correct zijn.
+
+### Multiple instances (niet standaard ondersteund)
+
+De applicatie is ontworpen voor single-instance draai met SQLite. Voor multiple instances zou een externe database (PostgreSQL) nodig zijn.
