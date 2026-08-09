@@ -66,5 +66,4 @@ Inventarisatie_AI_initiatieven_v0.1.md
 alembic/
 alembic.ini
 
-# Lock file (used during build only, already synced)
-uv.lock
+# Note: uv.lock is needed for Docker build — do not exclude it

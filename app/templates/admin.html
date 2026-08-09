@@ -46,19 +46,31 @@
 <div class="tab-content" id="tab-backup">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
     <h2 style="font-size:18px;font-weight:600;">Backup & Restore</h2>
-    <button class="btn btn-primary" onclick="doBackup()" id="backup-btn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
-        <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
-        <polyline points="17,21 17,13 7,13 7,21"/>
-        <polyline points="7,3 7,8 15,8"/>
-      </svg>
-      Backup maken
-    </button>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-secondary" onclick="showImportModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="17,8 12,3 7,8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        Importeer
+      </button>
+      <button class="btn btn-primary" onclick="doBackup()" id="backup-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+          <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+          <polyline points="17,21 17,13 7,13 7,21"/>
+          <polyline points="7,3 7,8 15,8"/>
+        </svg>
+        Backup maken
+      </button>
+    </div>
   </div>
 
   <div class="card" style="margin-bottom:16px;">
     <p style="font-size:13px;color:var(--muted);">
       Backups worden opgeslagen in <code>data/backups/</code>. Er wordt maximaal 10 backups bewaard.
+      Gebruik <strong>Downloaden</strong> om een backup naar je computer te halen, en <strong>Importeer</strong>
+      om een eerdere backup terug te zetten (ook op een ander systeem).
     </p>
   </div>
 
@@ -68,7 +80,7 @@
         <th>Bestandsnaam</th>
         <th>Grootte</th>
         <th>Aangemaakt</th>
-        <th style="width:160px;">Acties</th>
+        <th style="width:240px;">Acties</th>
       </tr>
     </thead>
     <tbody id="backups-tbody">
@@ -221,6 +233,48 @@
   </div>
 </div>
 
+<!-- Import Backup Modal -->
+<div class="modal-overlay" id="modal-import-backup">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header">
+      <h2 class="modal-title">Importeer Backup</h2>
+      <button class="modal-close" onclick="closeModal('import-backup')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <form id="import-form" onsubmit="doImportBackup(event)" style="padding:28px 32px;">
+      <div class="card" style="margin-bottom:20px;border:1px solid var(--border);">
+        <p style="font-size:13px;color:var(--fg);margin-bottom:8px;">
+          Upload een <strong>.db</strong> bestand om de database te herstellen.
+        </p>
+        <p style="font-size:12px;color:var(--muted);">
+          Gebruik eerst "Downloaden" bij een backup om een bestand te maken.
+          Het bestand kan op elk systeem worden geïmporteerd — ook op een ander server.
+          De huidige database wordt automatisch gebackupt voordat de import plaatsvindt.
+        </p>
+      </div>
+
+      <div class="form-group">
+        <label for="import-file-input">Backup bestand</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="file" id="import-file-input" accept=".db,.sqlite,.sqlite3" onchange="handleImportFileSelect(event)" style="flex:1;font-size:13px;">
+        </div>
+        <p class="help-text">
+          Geselecteerd: <strong id="import-file-name">(geen bestand gekozen)</strong>
+          <span id="import-file-size"></span>
+        </p>
+      </div>
+
+      <div id="import-result" style="display:none;margin-top:16px;"></div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px;">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('import-backup')">Annuleren</button>
+        <button type="submit" class="btn btn-primary" id="import-submit-btn">Importeer & Herstel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <style>
   .tabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:24px; }
   .tab {
@@ -252,6 +306,23 @@
   #log-container .log-error { color:var(--stopped); }
   #log-container .log-warning { color:#b45309; }
   #log-container .log-info { color:var(--success); }
+
+  .import-result {
+    padding:12px 16px;
+    border-radius:6px;
+    font-size:13px;
+    border:1px solid var(--border);
+  }
+  .import-result.success {
+    background:var(--success-subtle, #dcfce7);
+    border-color:var(--success, #22c55e);
+    color:var(--fg);
+  }
+  .import-result.error {
+    background:var(--stopped-subtle, #fef2f2);
+    border-color:var(--stopped, #ef4444);
+    color:var(--fg);
+  }
 </style>
 
 <script>
@@ -391,6 +462,9 @@ async function loadBackups() {
         <td>${formatBytes(b.size_bytes)}</td>
         <td style="color:var(--muted);font-size:12px;">${new Date(b.created_at).toLocaleString('nl-NL')}</td>
         <td>
+          <button class="btn btn-ghost" onclick="downloadBackup('${escapeHtml(b.filename)}')" style="padding:4px 8px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Downloaden</button>
           <button class="btn btn-ghost" onclick="restoreBackup('${escapeHtml(b.filename)}')" style="padding:4px 8px;">Herstel</button>
           <button class="btn btn-ghost" onclick="deleteBackup('${escapeHtml(b.filename)}')" style="padding:4px 8px;color:var(--stopped);">Verwijder</button>
         </td>
@@ -450,6 +524,115 @@ function deleteBackup(filename) {
     }
   };
   openModal('confirm');
+}
+
+function downloadBackup(filename) {
+  // Open export endpoint in new window — browser triggert file download
+  const url = `/api/admin/backup/export/${encodeURIComponent(filename)}`;
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  showToast(`Download gestart: ${filename}`);
+}
+
+// ===== Import Backup =====
+
+function showImportModal() {
+  document.getElementById('import-file-name').textContent = '(geen bestand gekozen)';
+  document.getElementById('import-file-size').textContent = '';
+  document.getElementById('import-result').style.display = 'none';
+  document.getElementById('import-form').reset();
+  openModal('import-backup');
+}
+
+function handleImportFileSelect(event) {
+  const file = event.target.files[0];
+  if (file) {
+    document.getElementById('import-file-name').textContent = file.name;
+    document.getElementById('import-file-size').textContent = `(${formatBytes(file.size)})`;
+  } else {
+    document.getElementById('import-file-name').textContent = '(geen bestand gekozen)';
+    document.getElementById('import-file-size').textContent = '';
+  }
+  // Hide previous result
+  document.getElementById('import-result').style.display = 'none';
+}
+
+async function doImportBackup(event) {
+  event.preventDefault();
+  const fileInput = document.getElementById('import-file-input');
+  const file = fileInput.files[0];
+
+  if (!file) {
+    showToast('Selecteer eerst een bestand');
+    return;
+  }
+
+  if (!file.name.endsWith('.db')) {
+    showToast('Alleen .db bestanden zijn toegestaan');
+    return;
+  }
+
+  const btn = document.getElementById('import-submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Bezig...';
+
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const result = await apiCall('/api/admin/backup/import', {
+      method: 'POST',
+      body: formData,
+      skipContentType: true, // don't set Content-Type, let browser set boundary
+    });
+
+    // Show success result
+    const resultDiv = document.getElementById('import-result');
+    resultDiv.style.display = 'block';
+    resultDiv.className = 'import-result success';
+    resultDiv.innerHTML = `
+      <div style="display:flex;align-items:flex-start;gap:10px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;flex-shrink:0;margin-top:2px;color:var(--success);">
+          <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+          <polyline points="22,4 12,14.01 9,11.01"/>
+        </svg>
+        <div>
+          <p style="font-weight:600;margin-bottom:4px;">Import voltooid!</p>
+          <p style="font-size:13px;color:var(--muted);">
+            ${result.initiative_count} initiatieven geïmporteerd uit <strong>${escapeHtml(result.imported_file)}</strong>.
+            ${result.pre_restore_backup ? 'Huidige database is gebackupt.' : ''}
+          </p>
+          <p style="font-size:12px;color:var(--muted);margin-top:8px;">
+            Herstart de applicatie voor een schone start:
+            <button class="btn btn-ghost" onclick="location.reload()" style="padding:2px 8px;font-size:12px;">Herlaad pagina</button>
+          </p>
+        </div>
+      </div>
+    `;
+  } catch (e) {
+    console.error('Import failed:', e);
+    const resultDiv = document.getElementById('import-result');
+    resultDiv.style.display = 'block';
+    resultDiv.className = 'import-result error';
+    resultDiv.innerHTML = `
+      <div style="display:flex;align-items:flex-start;gap:10px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;flex-shrink:0;margin-top:2px;color:var(--stopped);">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="15" y1="9" x2="9" y2="15"/>
+          <line x1="9" y1="9" x2="15" y2="15"/>
+        </svg>
+        <div>
+          <p style="font-weight:600;margin-bottom:4px;">Import mislukt</p>
+          <p style="font-size:13px;color:var(--muted);">${escapeHtml(typeof e === 'string' ? e : String(e))}</p>
+        </div>
+      </div>
+    `;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Importeer & Herstel';
+  }
 }
 
 // ===== Logs =====

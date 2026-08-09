@@ -5,6 +5,8 @@ Deze module biedt:
   - GET /api/admin/status — applicatiestatus met versie, DB-grootte, aantallen
   - GET /api/admin/config — huidige configuratie (geen secrets)
   - POST /api/admin/backup — database backup trigger
+  - GET /api/admin/backup/export/{name} — download een backup bestand
+  - POST /api/admin/backup/import — upload en importeer een backup bestand
   - POST /api/admin/restore — database restore van backup
   - GET /api/admin/logs — logfile inhoud voor admin UI
 """
@@ -12,6 +14,7 @@ Deze module biedt:
 import os
 import shutil
 import sqlite3
+import uuid
 import zipfile
 from datetime import datetime
 from pathlib import Path
@@ -241,6 +244,143 @@ async def admin_delete_backup(backup_name: str):
 
     backup_path.unlink()
     return {"success": True, "deleted": backup_name}
+
+
+@router.get("/api/admin/backup/export/{backup_name}")
+async def admin_export_backup(backup_name: str):
+    """Download een backup bestand naar je eigen computer.
+
+    Retourneert het .db bestand als file download zodat je het kunt
+    opslaan en later op een ander systeem kunt importeren.
+    """
+    from fastapi.responses import FileResponse
+
+    db_dir = Path(os.path.dirname(DB_PATH)) if os.path.dirname(DB_PATH) else Path(".")
+    default_backup_dir = str(db_dir / "backups")
+    backup_dir = Path(os.environ.get("BACKUP_DIR", default_backup_dir))
+    backup_path = backup_dir / backup_name
+
+    if not backup_path.exists():
+        raise HTTPException(status_code=404, detail="Backup niet gevonden")
+
+    # Beveiliging: path traversal check
+    try:
+        resolved_backup = backup_path.resolve()
+        resolved_dir = backup_dir.resolve()
+        resolved_backup.relative_to(resolved_dir)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Ongeldige backup naam")
+
+    logger.info(f"Backup geëxporteerd: {backup_name}")
+    return FileResponse(
+        path=str(backup_path),
+        filename=backup_name,
+        media_type="application/x-sqlite3",
+    )
+
+
+@router.post("/api/admin/backup/import")
+async def admin_import_backup(file: UploadFile = FastAPIFile(...)):
+    """Importeer een backup bestand van je eigen computer.
+
+    Upload een .db bestand dat eerder is geëxporteerd of handmatig is gemaakt.
+    Het bestand wordt gevalideerd, opgeslagen in de backups map, en daarna
+    automatisch als huidige database ingesteld.
+
+    Maakt automatisch een pre-restore backup van de huidige database.
+    """
+    from fastapi.responses import HTMLResponse
+
+    # Valideer bestandsnaam
+    if not file.filename or not file.filename.endswith(".db"):
+        raise HTTPException(
+            status_code=400,
+            detail="Alleen .db bestanden zijn toegestaan",
+        )
+
+    db_dir = Path(os.path.dirname(DB_PATH)) if os.path.dirname(DB_PATH) else Path(".")
+    default_backup_dir = str(db_dir / "backups")
+    backup_dir = Path(os.environ.get("BACKUP_DIR", default_backup_dir))
+    backup_dir.mkdir(parents=True, exist_ok=True)
+
+    # Lees bestand inhoud en sla tijdelijk op
+    import tempfile
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+        tmp_path = Path(tmp.name)
+        content = await file.read()
+        # Max 500MB check
+        if len(content) > 500 * 1024 * 1024:
+            tmp_path.unlink()
+            raise HTTPException(
+                status_code=400,
+                detail="Bestand is te groot (max 500MB)",
+            )
+        tmp.write(content)
+
+    try:
+        # Valideer dat het een geldige SQLite database is met initiatives tabel
+        test_conn = sqlite3.connect(str(tmp_path))
+        try:
+            tables = [row[0] for row in test_conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()]
+            if "initiatives" not in tables:
+                raise ValueError("Database mist 'initiatives' tabel")
+            # Tel records voor feedback
+            initiative_count = test_conn.execute(
+                "SELECT count(*) FROM initiatives"
+            ).fetchone()[0]
+        finally:
+            test_conn.close()
+
+        # Maak pre-restore backup van huidige database (als deze bestaat)
+        pre_restore_path = None
+        if os.path.exists(DB_PATH):
+            pre_restore = backup_dir / f"pre_restore_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.db"
+            try:
+                conn = sqlite3.connect(DB_PATH)
+                restore_conn = sqlite3.connect(str(pre_restore))
+                conn.backup(restore_conn)
+                restore_conn.close()
+                conn.close()
+                pre_restore_path = str(pre_restore)
+            except Exception as e:
+                logger.error(f"Pre-restore backup mislukt: {e}")
+
+        # Sla opgeladene backup ook op in backups map (voor referentie)
+        import_hash = uuid.uuid4().hex[:8]
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        archived_name = f"imported_{timestamp}_{import_hash}.db"
+        archived_path = backup_dir / archived_name
+        shutil.copy2(str(tmp_path), str(archived_path))
+
+        # Vervang huidige database met geïmporteerde backup
+        shutil.copy2(str(tmp_path), DB_PATH)
+
+        logger.info(
+            f"Database geïmporteerd van {file.filename} "
+            f"({initiative_count} initiatieven) → {archived_name}"
+        )
+
+        return {
+            "success": True,
+            "message": "Database succesvol geïmporteerd",
+            "imported_file": file.filename,
+            "initiative_count": initiative_count,
+            "archived_as": archived_name,
+            "pre_restore_backup": pre_restore_path,
+        }
+
+    except ValueError as e:
+        tmp_path.unlink()
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Import mislukt: {e}")
+        tmp_path.unlink()
+        raise HTTPException(status_code=500, detail=f"Import mislukt: {e}")
+    finally:
+        if tmp_path.exists():
+            tmp_path.unlink()
 
 
 @router.post("/api/admin/restore/{backup_name}")

@@ -1559,6 +1559,10 @@
           defaults.headers['X-CSRF-Token'] = token;
         }
       }
+      // Allow FormData uploads — skip Content-Type so browser sets boundary
+      if (options.skipContentType || options.body instanceof FormData) {
+        delete defaults.headers['Content-Type'];
+      }
       const response = await fetch(url, { ...defaults, ...options });
       // Redirect to login on 401
       if (response.status === 401 && !url.includes('/api/auth/login')) {
