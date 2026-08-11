@@ -1431,8 +1431,12 @@
     const formData = new FormData(e.target);
     const data = {};
     formData.forEach((value, key) => {
-      if (key === 'horizon' && !value) return;
-      if (key !== 'tag_ids') data[key] = value;
+      if (key !== 'tag_ids') {
+        // Converteer lege strings naar undefined zodat ze niet meegestuurd worden
+        // (Pydantic schema accepteert geen lege strings voor enum velden)
+        if (value === '') return;
+        data[key] = value;
+      }
     });
 
     // Handle multi-select tag_ids separately

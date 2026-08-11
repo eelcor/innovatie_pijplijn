@@ -56,6 +56,12 @@ class InitiativeCreate(BaseModel):
     opmerkingen: Optional[str] = None
 
 
+def _strip_empty(v):
+    """Converteer lege strings naar None voor optionele velden."""
+    if isinstance(v, str) and v.strip() == "":
+        return None
+    return v
+
 class InitiativeUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
@@ -85,6 +91,14 @@ class InitiativeUpdate(BaseModel):
     gerelateerde_initiatieven_ids: Optional[list[str]] = None  # multi-select uit UI
     volgende_stap: Optional[str] = None
     opmerkingen: Optional[str] = None
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def empty_to_none(cls, v):
+        """Converteer lege strings naar None voor alle optionele velden."""
+        if isinstance(v, str) and v.strip() == "":
+            return None
+        return v
 
 
 class InitiativeStop(BaseModel):
