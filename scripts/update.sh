@@ -1,168 +1,153 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Innovatiepijplijn — Updatescript
-# Haalt de nieuwste code, rebuild het Docker image en start opnieuw.
+# Innovatiepijplijn — Updatescript v0.2
+# Haalt nieuwste code, maakt backup, rebuild en restart met minimale downtime.
 #
 # Gebruik:
-#   ./scripts/update.sh               # Automatische update
-#   ./scripts/update.sh --dry-run     # Toon wat er gaat veranderen
+#   ./scripts/update.sh           # Automatische update
+#   ./scripts/update.sh --dry-run # Toon wat er gaat veranderen
 # =============================================================================
 
 set -euo pipefail
 
-# Kleuren voor output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Kleuren
+R='\033[0;31m' G='\033[0;32m' Y='\033[1;33m' B='\033[0;34m' C='\033[0;36m' N='\033[0m'
 
-# Detecteer script locatie en ga naar project root
+# Script locatie en project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
-log_info()  { echo -e "${BLUE}[INFO]${NC}  $*"; }
-log_ok()    { echo -e "${GREEN}[OK]${NC}    $*"; }
-log_warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $*"; }
+info()  { echo -e "${B}[INFO]${N}  $*"; }
+ok()    { echo -e "${G}[OK]${N}    $*"; }
+warn()  { echo -e "${Y}[WARN]${N}  $*"; }
+error() { echo -e "${R}[ERR]${N}   $*"; }
+step()  { echo -e "\n${C}═══ $* ═══${N}"; }
 
 DRY_RUN=false
-if [[ "${1:-}" == "--dry-run" ]]; then
-    DRY_RUN=true
+[[ "${1:-}" == "--dry-run" ]] && DRY_RUN=true
+
+if [[ "$DRY_RUN" == true ]]; then
+    warn "DRY-RUN modus — niets wordt gewijzigd"
 fi
 
-# --- Controleer of container draait ---
-check_container() {
-    if ! docker compose ps --status running 2>/dev/null | grep -q innovatiepijplijn; then
-        log_warn "Container is niet actief. Start manual met: docker compose up -d"
-    else
-        log_ok "Container is actief"
+# ── Controleer git status ───────────────────────────────────────────────────
+step "Controleer repository"
+
+if ! command -v git &>/dev/null; then
+    error "Git is niet geïnstalleerd"
+    exit 1
+fi
+
+# Huidige commit en branch
+CURRENT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "onbekend")
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "onbekend")
+info "Huidige versie: $CURRENT_COMMIT (branch: $CURRENT_BRANCH)"
+
+# Check of er lokale wijzigingen zijn
+if ! git diff --quiet 2>/dev/null || ! git diff --cached --quiet 2>/dev/null; then
+    warn "Er zijn oncommitterde wijzigingen in de repository"
+    if [[ "$DRY_RUN" == false ]]; then
+        read -p "Doorgaan? (lokaal werk gaat verloren) [y/N]: " CONFIRM
+        [[ "${CONFIRM,,}" != "y" && "${CONFIRM,,}" != "yes" ]] && exit 0
     fi
-}
+fi
 
-# --- Backup huidige database ---
-backup_database() {
-    log_info "Maak backup van huidige database..."
+# Haal nieuwste code
+if [[ "$DRY_RUN" == false ]]; then
+    info "Haal nieuwste code..."
+    git pull origin "$CURRENT_BRANCH"
+    ok "Code bijgewerkt"
+else
+    info "Zou uitvoeren: git pull origin $CURRENT_BRANCH"
+fi
 
-    local timestamp
-    timestamp=$(date +%Y%m%d_%H%M%S)
-    local backup_file="/tmp/innovatiepijplijn_db_${timestamp}.db"
+# Nieuwe commit?
+NEW_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "onbekend")
+if [[ "$CURRENT_COMMIT" == "$NEW_COMMIT" ]]; then
+    info "Al op laatste versie — geen update nodig"
+    exit 0
+fi
+info "Update: $CURRENT_COMMIT → $NEW_COMMIT"
 
-    if docker compose cp innovatiepijplijn:/app/data/innovatiepijplijn.db "$backup_file" 2>/dev/null; then
-        log_ok "Backup gemaakt: ${backup_file}"
-        echo "$backup_file"
-    else
-        log_warn "Kon geen backup maken (database bestaat mogelijk nog niet)"
-        echo ""
-    fi
-}
+# ── Backup database ─────────────────────────────────────────────────────────
+step "Maak backup van database"
 
-# --- Haal nieuwste code ---
-pull_latest() {
-    if [[ -d ".git" ]]; then
-        log_info "Haal nieuwste code van Git..."
+if [[ "$DRY_RUN" == false ]]; then
+    # Check of container draait
+    if docker compose ps --status running 2>/dev/null | grep -q innovatiepijplijn; then
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        BACKUP_FILE="/tmp/innovatiepijplijn_preupdate_${TIMESTAMP}.db"
 
-        # Sla huidige commit op voor rollback info
-        local current_commit
-        current_commit=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-        log_info "Huidige commit: ${current_commit}"
-
-        if git pull origin "$(git branch --show HEAD)" 2>/dev/null; then
-            local new_commit
-            new_commit=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-            if [[ "$current_commit" != "$new_commit" ]]; then
-                log_ok "Code geüpdate: ${current_commit} → ${new_commit}"
-            else
-                log_info "Geen nieuwe code gevonden (al op latest)"
-            fi
+        info "Kopieer database naar $BACKUP_FILE..."
+        if docker compose cp innovatiepijplijn:/app/data/innovatiepijplijn.db "$BACKUP_FILE" 2>/dev/null; then
+            SIZE=$(du -h "$BACKUP_FILE" | cut -f1)
+            ok "Backup gemaakt (${SIZE})"
+            info "Backup locatie: $BACKUP_FILE"
         else
-            log_warn "Git pull mislukt of geen remote geconfigureerd. Ga door met lokale code."
+            warn "Kon database niet kopiëren — ga door zonder backup"
         fi
     else
-        log_info "Geen Git repo gevonden. Gebruik bestaande lokale code."
+        warn "Container draait niet — skip backup"
     fi
-}
+else
+    info "Zou database backup maken"
+fi
 
-# --- Rebuild en restart ---
-rebuild() {
-    log_info "Rebuild Docker image..."
-    docker compose build --pull
+# ── Rebuild Docker image ────────────────────────────────────────────────────
+step "Rebuild Docker image"
 
-    log_ok "Image gerebuild"
+if [[ "$DRY_RUN" == false ]]; then
+    if ! docker compose build --quiet 2>&1; then
+        error "Docker build mislukt!"
+        info "Backup is beschikbaar op /tmp/innovatiepijplijn_preupdate_*.db"
+        exit 1
+    fi
+    ok "Image gerebuild"
+else
+    info "Zou uitvoeren: docker compose build"
+fi
 
-    log_info "Restart container..."
+# ── Restart container ───────────────────────────────────────────────────────
+step "Herstart applicatie"
+
+if [[ "$DRY_RUN" == false ]]; then
+    # Bepaal poort
+    APP_PORT=$(grep -oP 'APP_PORT=\K.*' .env 2>/dev/null || echo "8000")
+
+    info "Container herstarten..."
     docker compose up -d
 
     # Wacht op healthy
-    log_info "Wacht op applicatie startup..."
-    local max_wait=60
-    local waited=0
-    while [[ $waited -lt $max_wait ]]; do
-        if docker inspect --format='{{.State.Health.Status}}' innovatiepijplijn 2>/dev/null | grep -q "healthy"; then
-            log_ok "Applicatie is healthy en draait!"
-            return 0
+    MAX_WAIT=60
+    WAITED=0
+    HEALTHY=false
+
+    while [[ $WAITED -lt $MAX_WAIT ]]; do
+        HEALTH=$(docker compose exec innovatiepijplijn curl -s http://localhost:${APP_PORT}/health 2>/dev/null || echo "")
+        if echo "$HEALTH" | grep -q "ok"; then
+            HEALTHY=true
+            break
         fi
         sleep 2
-        waited=$((waited + 2))
-        printf "."
+        WAITED=$((WAITED + 2))
     done
-    echo ""
 
-    if ! docker inspect --format='{{.State.Health.Status}}' innovatiepijplijn 2>/dev/null | grep -q "healthy"; then
-        log_warn "Applicatie is nog niet healthy na ${max_wait}s."
-        docker compose logs --tail=30 innovatiepijplijn
+    if [[ "$HEALTHY" == true ]]; then
+        ok "Update voltooid — applicatie healthy na ${WAITED}s"
+    else
+        warn "Applicatie reageert nog niet na ${MAX_WAIT}s"
+        warn "Check logs: docker compose logs innovatiepijplijn"
     fi
-}
+else
+    info "Zou uitvoeren: docker compose up -d"
+fi
 
-# --- Toon update samenvatting ---
-show_summary() {
-    local app_port
-    app_port=$(grep -oP 'APP_PORT=\K.*' .env 2>/dev/null || echo "8000")
-    app_port="${app_port:-8000}"
-
+# ── Samenvatting ────────────────────────────────────────────────────────────
+if [[ "$DRY_RUN" == false ]]; then
     echo ""
-    echo -e "${GREEN}========================================${NC}"
-    echo -e "${GREEN}  Update voltooid!                      ${NC}"
-    echo -e "${GREEN}========================================${NC}"
-    echo ""
-    echo -e "  Applicatie:     ${BLUE}http://localhost:${app_port}${NC}"
-    echo ""
-    echo -e "  Handige commando's:"
-    echo -e "    Logs bekijken:   docker compose logs -f"
-    echo -e "    Restart:         docker compose restart"
-    echo -e "    Rollback image:  zie docs/operations.md"
-    echo ""
-}
-
-# --- Main ---
-main() {
-    echo -e "${BLUE}========================================${NC}"
-    echo -e "${BLUE}  Innovatiepijplijn — Update            ${NC}"
-    echo -e "${BLUE}========================================${NC}"
-    echo ""
-
-    if $DRY_RUN; then
-        log_info "--- DRY RUN --- Toon wat er gaat veranderen:"
-        echo ""
-        check_container
-        pull_latest
-        echo ""
-        log_info "Bij echte run: docker image rebuilden en container restarten"
-        exit 0
-    fi
-
-    check_container
-    local backup_path
-    backup_path=$(backup_database)
-    pull_latest
-    rebuild
-    show_summary
-
-    if [[ -n "$backup_path" ]]; then
-        echo ""
-        log_info "Database backup opgeslagen op: ${backup_path}"
-    fi
-}
-
-main "$@"
+    info "Update samenvatting:"
+    info "  Van: $CURRENT_COMMIT → Naar: $NEW_COMMIT"
+    info "  Branch: $CURRENT_BRANCH"
+    info "  Status: $(docker compose ps --status running 2>/dev/null | grep -q innovatiepijplijn && echo 'running' || echo 'onbekend')"
+fi

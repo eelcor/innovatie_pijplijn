@@ -308,6 +308,7 @@ Volledige API documentatie is beschikbaar op `/docs` na het starten van de appli
 
 | Document | Locatie | Inhoud |
 |----------|---------|--------|
+| **Deploy gids** | `deploy.md` | Productie-installatie, upgrades, backups, security |
 | **Docker gebruik** | `docker/README.md` | Gedetailleerde Docker instructies |
 | **IT Operations** | `docs/operations.md` | Monitoring, backups, troubleshooting |
 | **.env template** | `.env.example` | Alle configuratie-opties uitgelegd |

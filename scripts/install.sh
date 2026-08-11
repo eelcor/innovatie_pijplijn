@@ -1,212 +1,167 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Innovatiepijplijn — Installatiescript
+# Innovatiepijplijn — Installatiescript v0.2
 # Installeert de applicatie via Docker Compose op een frisse server.
 #
 # Gebruik:
 #   ./scripts/install.sh              # Interactieve installatie
-#   ./scripts/install.sh --non-interactive  # Automatisch met .env.example defaults
+#   ./scripts/install.sh --non-interactive  # Automatisch met defaults
 # =============================================================================
 
 set -euo pipefail
 
-# Kleuren voor output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Kleuren
+R='\033[0;31m' G='\033[0;32m' Y='\033[1;33m' B='\033[0;34m' C='\033[0;36m' N='\033[0m'
 
-# Detecteer script locatie en ga naar project root
+# Script locatie en project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
-log_info()  { echo -e "${BLUE}[INFO]${NC}  $*"; }
-log_ok()    { echo -e "${GREEN}[OK]${NC}    $*"; }
-log_warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $*"; }
+info()  { echo -e "${B}[INFO]${N}  $*"; }
+ok()    { echo -e "${G}[OK]${N}    $*"; }
+warn()  { echo -e "${Y}[WARN]${N}  $*"; }
+error() { echo -e "${R}[ERR]${N}   $*"; }
+step()  { echo -e "\n${C}═══ $* ═══${N}"; }
 
-# --- Voorwaarden controleren ---
-check_prerequisites() {
-    log_info "Controleer installatie-voorwaarden..."
+NON_INTERACTIVE=false
+[[ "${1:-}" == "--non-interactive" ]] && NON_INTERACTIVE=true
 
-    # Docker
-    if ! command -v docker &>/dev/null; then
-        log_error "Docker is niet geïnstalleerd. Zie: https://docs.docker.com/get-docker/"
-        exit 1
-    fi
-    log_ok "Docker gevonden: $(docker --version)"
+# ── Voorwaarden controleren ──────────────────────────────────────────────────
+step "Controleer voorwaarden"
 
-    # Docker Compose (v2 plugin)
-    if ! docker compose version &>/dev/null; then
-        log_error "Docker Compose plugin niet gevonden. Installeer Docker Compose v2."
-        exit 1
-    fi
-    log_ok "Docker Compose gevonden: $(docker compose version --short)"
+# Docker
+if ! command -v docker &>/dev/null; then
+    error "Docker is niet geïnstalleerd. Zie: https://docs.docker.com/get-docker/"
+    exit 1
+fi
+ok "Docker $(docker --version | awk '{print $NF}')"
 
-    # Docker daemon draait?
-    if ! docker info &>/dev/null; then
-        log_error "Docker daemon draait niet. Start Docker en probeer opnieuw."
-        exit 1
-    fi
-    log_ok "Docker daemon is actief"
+# Docker Compose
+if ! docker compose version &>/dev/null; then
+    error "Docker Compose v2 is niet beschikbaar"
+    exit 1
+fi
+ok "Docker Compose $(docker compose version --short)"
 
-    # Check of poort vrij is
-    APP_PORT="${APP_PORT:-8000}"
-    if command -v lsof &>/dev/null && lsof -Pi ":${APP_PORT}" -sTCP:LISTEN -t &>/dev/null; then
-        log_warn "Poort ${APP_PORT} is al in gebruik. De applicatie kan niet starten."
-        log_info "Gebruik een andere poort: APP_PORT=9000 ./scripts/install.sh"
-    fi
-}
+# Git (optioneel, voor updates)
+if command -v git &>/dev/null; then
+    ok "Git $(git --version | awk '{print $3}')"
+else
+    warn "Git niet gevonden — updates zullen handmatig moeten"
+fi
 
-# --- .env bestand configureren ---
-setup_env() {
-    log_info "Configureer omgevingsvariabelen..."
+# ── .env configuratie ────────────────────────────────────────────────────────
+step "Configureer .env"
 
-    if [[ -f ".env" ]]; then
-        log_warn ".env bestand bestaat al. Overslaan."
-        return
-    fi
-
-    # Kopieer template
+if [[ -f .env ]]; then
+    warn ".env bestaat al — wordt overslaan"
+else
     cp .env.example .env
-    log_ok ".env aangemaakt (gebaseerd op .env.example)"
+    ok ".env aangemaakt vanuit .env.example"
+fi
 
-    # Vraag admin wachtwoord bij interactieve modus
-    if [[ "${NON_INTERACTIVE:-false}" != "true" ]]; then
+# Genereer APP_SECRET_KEY als deze nog standaard is
+CURRENT_SECRET=$(grep -oP 'APP_SECRET_KEY=\K.*' .env 2>/dev/null || echo "")
+if [[ "$CURRENT_SECRET" == "verander-dit-naar-een-sterke-secret-key" || -z "$CURRENT_SECRET" ]]; then
+    if command -v python3 &>/dev/null; then
+        NEW_SECRET=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")
+    elif command -v openssl &>/dev/null; then
+        NEW_SECRET=$(openssl rand -base64 32 | tr -dc 'a-zA-Z0-9' | head -c 32)
+    else
+        NEW_SECRET="secret-$(date +%s)-$$-$(head /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 16)"
+    fi
+    sed -i "s|APP_SECRET_KEY=.*|APP_SECRET_KEY=$NEW_SECRET|" .env
+    ok "APP_SECRET_KEY gegenereerd"
+fi
+
+# Vraag admin credentials (interactief)
+if [[ "$NON_INTERACTIVE" == false ]]; then
+    echo ""
+    info "Admin account configuratie (druk op Enter voor defaults)"
+    read -p "  Gebruikersnaam [admin]: " ADMIN_USER
+    ADMIN_USER=${ADMIN_USER:-admin}
+
+    # Vraag wachtwoord verborgen
+    while true; do
+        read -s -p "  Wachtwoord: " ADMIN_PASS
         echo ""
-        log_info "--- Admin Account ---"
-        read -p "Admin username [admin]: " ADMIN_USER
-        ADMIN_USER="${ADMIN_USER:-admin}"
-
-        # Vraag wachtwoord (verborgen input)
-        while true; do
-            read -s -p "Admin password: " ADMIN_PASS
-            echo ""
-            read -s -p "Bevestig password: " ADMIN_PASS_CONFIRM
-            echo ""
-            if [[ "$ADMIN_PASS" == "$ADMIN_PASS_CONFIRM" ]]; then
-                if [[ ${#ADMIN_PASS} -lt 6 ]]; then
-                    log_warn "Wachtwoord moet minimaal 6 karakters bevatten."
-                else
-                    break
-                fi
-            else
-                log_warn "Wachtwoorden komen niet overeen."
-            fi
-        done
-
-        # Update .env met admin credentials
-        sed -i.bak "s/^APP_ADMIN_USERNAME=.*/APP_ADMIN_USERNAME=${ADMIN_USER}/" .env
-        sed -i.bak "s/^APP_ADMIN_PASSWORD=.*/APP_ADMIN_PASSWORD=${ADMIN_PASS}/" .env
-        rm -f .env.bak
-
-        # AI configuratie
+        read -s -p "  Bevestig wachtwoord: " ADMIN_PASS_CONFIRM
         echo ""
-        log_info "--- AI Configuratie (optioneel) ---"
-        read -p "AI inschakelen? (yes/no) [no]: " AI_CHOICE
-        if [[ "$AI_CHOICE" =~ ^([Yy][Ee][Ss]|[Yy])$ ]]; then
-            sed -i.bak "s/^AI_ENABLED=.*/AI_ENABLED=true/" .env
-            read -p "Model URL (bijv. http://taalmodel.local:8033): " MODEL_URL_INPUT
-            if [[ -n "$MODEL_URL_INPUT" ]]; then
-                sed -i.bak "s|^MODEL_URL=.*|MODEL_URL=${MODEL_URL_INPUT}|" .env
-            fi
-            read -p "Model naam (bijv. qwen3.6): " MODEL_NAME_INPUT
-            if [[ -n "$MODEL_NAME_INPUT" ]]; then
-                sed -i.bak "s/^MODEL_NAME=.*|MODEL_NAME=${MODEL_NAME_INPUT}|" .env
-            fi
-            log_ok "AI is ingeschakeld"
+        if [[ "$ADMIN_PASS" == "$ADMIN_PASS_CONFIRM" && ${#ADMIN_PASS} -ge 4 ]]; then
+            break
+        elif [[ "$ADMIN_PASS" != "$ADMIN_PASS_CONFIRM" ]]; then
+            warn "Wachtwoorden komen niet overeen — probeer opnieuw"
         else
-            sed -i.bak "s/^AI_ENABLED=.*/AI_ENABLED=false/" .env
-            log_info "AI is uitgeschakeld (kan later via admin panel worden aangezet)"
+            warn "Wachtwoord moet minimaal 4 karakters zijn — probeer opnieuw"
         fi
-        rm -f .env.bak
-    else
-        log_info "Non-interactive modus: gebruik standaardwaarden uit .env.example"
-    fi
-
-    # Update APP_BASE_URL met correcte poort
-    sed -i.bak "s|^APP_BASE_URL=.*|APP_BASE_URL=http://localhost:${APP_PORT:-8000}|" .env
-    rm -f .env.bak
-}
-
-# --- Docker bouwen en starten ---
-build_and_start() {
-    log_info "Bouw Docker image..."
-    docker compose build --quiet
-
-    log_ok "Docker image gebouwd"
-
-    log_info "Start applicatie..."
-    docker compose up -d
-
-    # Wacht op healthy status
-    log_info "Wacht op applicatie startup..."
-    local max_wait=60
-    local waited=0
-    while [[ $waited -lt $max_wait ]]; do
-        if docker inspect --format='{{.State.Health.Status}}' innovatiepijplijn 2>/dev/null | grep -q "healthy"; then
-            log_ok "Applicatie is healthy en draait!"
-            return 0
-        fi
-        sleep 2
-        waited=$((waited + 2))
-        printf "."
     done
-    echo ""
 
-    # Geef logs als niet healthy binnen timeout
-    if ! docker inspect --format='{{.State.Health.Status}}' innovatiepijplijn 2>/dev/null | grep -q "healthy"; then
-        log_warn "Applicatie is nog niet healthy na ${max_wait}s. Check de logs:"
-        docker compose logs --tail=20 innovatiepijplijn
-    else
-        log_ok "Installatie voltooid!"
+    # Update .env met nieuwe credentials
+    sed -i "s|APP_ADMIN_USERNAME=.*|APP_ADMIN_USERNAME=$ADMIN_USER|" .env
+    sed -i "s|APP_ADMIN_PASSWORD=.*|APP_ADMIN_PASSWORD=$ADMIN_PASS|" .env
+    ok "Admin credentials opgeslagen"
+else
+    ok "Non-interactive mode — gebruik defaults uit .env"
+fi
+
+# ── Docker image bouwen ─────────────────────────────────────────────────────
+step "Bouw Docker image"
+
+if ! docker compose build --quiet; then
+    error "Docker build mislukt. Check logs hierboven."
+    exit 1
+fi
+ok "Image gebouwd"
+
+# ── Start applicatie ────────────────────────────────────────────────────────
+step "Start applicatie"
+
+# Bepaal poort uit .env
+APP_PORT=$(grep -oP 'APP_PORT=\K.*' .env 2>/dev/null || echo "8000")
+
+docker compose up -d
+ok "Container gestart op poort $APP_PORT"
+
+# ── Wacht op healthy ────────────────────────────────────────────────────────
+step "Wacht op applicatie"
+
+MAX_WAIT=60
+WAITED=0
+HEALTHY=false
+
+while [[ $WAITED -lt $MAX_WAIT ]]; do
+    HEALTH=$(docker compose exec innovatiepijplijn curl -s http://localhost:${APP_PORT}/health 2>/dev/null || echo "")
+    if echo "$HEALTH" | grep -q "ok"; then
+        HEALTHY=true
+        break
     fi
-}
-
-# --- Toon samenvatting ---
-show_summary() {
-    local app_port="${APP_PORT:-8000}"
-    echo ""
-    echo -e "${GREEN}========================================${NC}"
-    echo -e "${GREEN}  Innovatiepijplijn is geïnstalleerd!   ${NC}"
-    echo -e "${GREEN}========================================${NC}"
-    echo ""
-    echo -e "  Applicatie:     ${BLUE}http://localhost:${app_port}${NC}"
-    echo -e "  Admin login:    ${BLUE}/login${NC}"
-    echo ""
-    echo -e "  Handige commando's:"
-    echo -e "    Logs bekijken:    docker compose logs -f"
-    echo -e "    Stoppen:          docker compose stop"
-    echo -e "    Opnieuw starten:  docker compose start"
-    echo -e "    Updaten:          ./scripts/update.sh"
-    echo ""
-    echo -e "  Documentatie:"
-    echo -e "    README:           cat README.md"
-    echo -e "    Docker gebruik:   cat docker/README.md"
-    echo -e "    Operations:       cat docs/operations.md"
-    echo ""
-}
-
-# --- Main ---
-main() {
-    NON_INTERACTIVE="${1:-}"
-    if [[ "$NON_INTERACTIVE" == "--non-interactive" ]]; then
-        NON_INTERACTIVE="true"
-    else
-        NON_INTERACTIVE="false"
+    sleep 2
+    WAITED=$((WAITED + 2))
+    if [[ $((WAITED % 10)) -eq 0 ]]; then
+        info "Wachten... ${WAITED}s"
     fi
+done
 
-    echo -e "${BLUE}========================================${NC}"
-    echo -e "${BLUE}  Innovatiepijplijn — Installatie       ${NC}"
-    echo -e "${BLUE}========================================${NC}"
-    echo ""
+if [[ "$HEALTHY" == true ]]; then
+    ok "Applicatie is healthy na ${WAITED}s"
+else
+    warn "Applicatie reageert nog niet na ${MAX_WAIT}s — check logs:"
+    warn "  docker compose logs innovatiepijplijn"
+fi
 
-    check_prerequisites
-    setup_env
-    build_and_start
-    show_summary
-}
-
-main "$@"
+# ── Samenvatting ────────────────────────────────────────────────────────────
+echo ""
+echo -e "${C}╔══════════════════════════════════════════════════════════╗${N}"
+echo -e "${C}║${N}                INSTALLATIE VOLTOOID                      ${C}║${N}"
+echo -e "${C}╚══════════════════════════════════════════════════════════╝${N}"
+echo ""
+info "Applicatie bereikbaar op:  http://localhost:$APP_PORT"
+info "Admin dashboard:          http://localhost:$APP_PORT/admin"
+info "API documentatie:         http://localhost:$APP_PORT/docs"
+echo ""
+info "Handige commando's:"
+echo "  docker compose logs -f        # Logs bekijken"
+echo "  docker compose restart        # Herstarten"
+echo "  ./scripts/update.sh           # Upgraden"
+echo ""
