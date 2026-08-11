@@ -107,6 +107,58 @@
       </button>
       {% endif %}
     </div>
+
+    <!-- v0.2: Cluster filter -->
+    <div class="filter-group">
+      <div class="filter-group-title">Cluster</div>
+      <div class="filter-options" data-filter="cluster">
+        <button class="filter-option selected" data-value="" onclick="selectFilter(this)">
+          <span class="filter-radio-dot"></span> Alle clusters
+        </button>
+        {% set cluster_options = [
+          ('Beheer', 'Beheer'),
+          ('Interne Dienstverlening en Advisering', 'Dienstverlening'),
+          ('Participatie en Maatschappelijke Ontwikkeling', 'Participatie'),
+          ('Publiekszaken Handhaving en Veiligheid', 'Publiekszaken'),
+          ('Stedelijke Ontwikkeling', 'Stedelijke Ontw.'),
+        ] %}
+        {% for val, label in cluster_options %}
+        <button class="filter-option" data-value="{{ val }}" onclick="selectFilter(this)">
+          <span class="filter-radio-dot"></span> {{ label }}
+        </button>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- v0.2: Potentie filter -->
+    <div class="filter-group">
+      <div class="filter-group-title">Potentie</div>
+      <div class="filter-options" data-filter="potentie">
+        <button class="filter-option selected" data-value="" onclick="selectFilter(this)">
+          <span class="filter-radio-dot"></span> Alle
+        </button>
+        {% for p in potenties %}
+        <button class="filter-option" data-value="{{ p }}" onclick="selectFilter(this)">
+          <span class="filter-radio-dot"></span> {{ potentieLabel(p) }}
+        </button>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- v0.2: Risico filter -->
+    <div class="filter-group">
+      <div class="filter-group-title">Risico</div>
+      <div class="filter-options" data-filter="risico">
+        <button class="filter-option selected" data-value="" onclick="selectFilter(this)">
+          <span class="filter-radio-dot"></span> Alle
+        </button>
+        {% for r in risico_levels %}
+        <button class="filter-option" data-value="{{ r }}" onclick="selectFilter(this)">
+          <span class="filter-radio-dot"></span> {{ risicoLabel(r) }}
+        </button>
+        {% endfor %}
+      </div>
+    </div>
   </div>
 </div>
 
@@ -125,6 +177,13 @@
     search: '',
     loading: false,
     view: localStorage.getItem('initiatives_view') || 'cards',  // 'cards' of 'list'
+    // v0.2: nieuwe filters
+    cluster: '',
+    potentie: '',
+    risico: '',
+    // Sorting (alleen relevant voor list view)
+    sort: 'updated_at',
+    order: 'desc',
   };
 
   // Debounce helper
@@ -155,6 +214,10 @@
     if (filterState.mds_id) count++;
     if (filterState.tag_ids.length > 0) count += filterState.tag_ids.length;
     if (filterState.no_central_question) count++;
+    // v0.2
+    if (filterState.cluster) count++;
+    if (filterState.potentie) count++;
+    if (filterState.risico) count++;
     return count;
   }
 
@@ -213,6 +276,13 @@
     if (filterState.tag_ids.length > 0) params.set('tag_ids', filterState.tag_ids.join(','));
     if (filterState.no_central_question) params.set('no_central_question', '1');
     if (filterState.search) params.set('search', filterState.search);
+    // v0.2: nieuwe filters
+    if (filterState.cluster) params.set('cluster', filterState.cluster);
+    if (filterState.potentie) params.set('potentie', filterState.potentie);
+    if (filterState.risico) params.set('risico', filterState.risico);
+    // Sorting
+    if (filterState.sort) params.set('sort', filterState.sort);
+    if (filterState.order) params.set('order', filterState.order);
 
     try {
       var url = '/api/initiatieven/filter?' + params.toString();
@@ -232,13 +302,13 @@
               // === LIST VIEW ===
               html += '<div class="initiatives-list-view">';
               html += '<div class="list-header-row">';
-              html += '<span class="list-col-title">Initiatief</span>';
-              html += '<span class="list-col-cluster">Cluster</span>';
-              html += '<span class="list-col-phase">Fase</span>';
-              html += '<span class="list-col-status">Status</span>';
-              html += '<span class="list-col-metric">Potentie</span>';
-              html += '<span class="list-col-metric">Risico</span>';
-              html += '<span class="list-col-date">Gewijzigd</span>';
+              html += '<span class="list-col-title list-header-sortable" data-sort-field="title" onclick="sortColumn(\'title\')">Initiatief <span class="sort-arrow">▲</span></span>';
+              html += '<span class="list-col-cluster list-header-sortable" data-sort-field="cluster" onclick="sortColumn(\'cluster\')">Cluster <span class="sort-arrow">▲</span></span>';
+              html += '<span class="list-col-phase list-header-sortable" data-sort-field="phase" onclick="sortColumn(\'phase\')">Fase <span class="sort-arrow">▲</span></span>';
+              html += '<span class="list-col-status list-header-sortable" data-sort-field="status" onclick="sortColumn(\'status\')">Status <span class="sort-arrow">▲</span></span>';
+              html += '<span class="list-col-metric list-header-sortable" data-sort-field="potentie" onclick="sortColumn(\'potentie\')">Potentie <span class="sort-arrow">▲</span></span>';
+              html += '<span class="list-col-metric list-header-sortable" data-sort-field="risico" onclick="sortColumn(\'risico\')">Risico <span class="sort-arrow">▲</span></span>';
+              html += '<span class="list-col-date list-header-sortable" data-sort-field="updated_at" onclick="sortColumn(\'updated_at\')">Gewijzigd <span class="sort-arrow">▲</span></span>';
               html += '</div>';
 
               data.initiatives.forEach(function(init) {
@@ -455,6 +525,36 @@
     loadInitiatives();
   };
 
+  // Sort by column (clickable list headers)
+  window.sortColumn = function(field) {
+    // Toggle order if same field, otherwise default to desc
+    if (filterState.sort === field) {
+      filterState.order = filterState.order === 'desc' ? 'asc' : 'desc';
+    } else {
+      filterState.sort = field;
+      filterState.order = 'desc';
+    }
+
+    // Update sort indicators in headers
+    updateSortIndicators();
+    loadInitiatives();
+  };
+
+  // Update sort indicator arrows in column headers
+  function updateSortIndicators() {
+    document.querySelectorAll('.list-header-sortable').forEach(function(el) {
+      var field = el.dataset.sortField;
+      var arrow = el.querySelector('.sort-arrow');
+      if (field === filterState.sort) {
+        el.classList.add('active');
+        if (arrow) arrow.textContent = filterState.order === 'desc' ? '▼' : '▲';
+      } else {
+        el.classList.remove('active');
+        if (arrow) arrow.textContent = '▲';
+      }
+    });
+  }
+
   // Reset all filters
   window.resetAllFilters = function() {
     filterState.phase = '';
@@ -463,8 +563,14 @@
     filterState.mds_id = '';
     filterState.tag_ids = [];
     filterState.no_central_question = false;
+    // v0.2
+    filterState.cluster = '';
+    filterState.potentie = '';
+    filterState.risico = '';
+    filterState.sort = 'updated_at';
+    filterState.order = 'desc';
 
-    // Reset single-select groups (phase, status, horizon)
+    // Reset single-select groups (phase, status, horizon, cluster, potentie, risico)
     document.querySelectorAll('.filter-options[data-filter]').forEach(function(group) {
       group.querySelectorAll('.filter-option').forEach(function(opt) {
         opt.classList.remove('selected');
@@ -526,5 +632,38 @@
     }
   }
   tryLoad();
+})();
+</script>
+
+<!-- CSS for sort indicators (injected via script since this is a partial) -->
+<script>
+(function() {
+  var style = document.createElement('style');
+  style.textContent = `
+    .list-header-sortable {
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: color 0.15s ease;
+    }
+    .list-header-sortable:hover {
+      color: var(--fg);
+    }
+    .list-header-sortable.active {
+      color: var(--accent);
+    }
+    .sort-arrow {
+      font-size: 8px;
+      opacity: 0.3;
+      flex-shrink: 0;
+    }
+    .list-header-sortable.active .sort-arrow {
+      opacity: 1;
+    }
+  `;
+  document.head.appendChild(style);
 })();
 </script>

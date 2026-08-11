@@ -131,6 +131,10 @@ async def filter_initiatives(
     mds_id: str = Query(None, description="Filter op MDS team ID"),
     no_central_question: bool = Query(False, description="Alleen initiatieven zonder centrale vraag"),
     search: str = Query(None, description="Zoekterm in titel/beschrijving"),
+    # v0.2: nieuwe filtercriteria
+    cluster: str = Query(None, description="Filter op cluster"),
+    potentie: str = Query(None, description="Filter op potentie"),
+    risico: str = Query(None, description="Filter op risico"),
     sort: str = Query("updated_at", description="Sorteer veld"),
     order: str = Query("desc", description="Sorteer richting (asc/desc)"),
     limit: int = Query(50, ge=1, le=200, description="Max aantal resultaten"),
@@ -170,6 +174,18 @@ async def filter_initiatives(
     if mds_id:
         query = query.filter(Initiative.mds_id == mds_id)
 
+    # v0.2: Filter op cluster
+    if cluster:
+        query = query.filter(Initiative.cluster == cluster)
+
+    # v0.2: Filter op potentie
+    if potentie:
+        query = query.filter(Initiative.potentie == potentie)
+
+    # v0.2: Filter op risico
+    if risico:
+        query = query.filter(Initiative.risico == risico)
+
     # Zoekterm in titel of beschrijving
     if search:
         search_pattern = f"%{search}%"
@@ -204,8 +220,9 @@ async def filter_initiatives(
             )
         )
 
-    # Sorting
-    sort_fields = {"updated_at", "title", "phase", "status", "created_at"}
+    # Sorting — extendeerd met v0.2 velden
+    sort_fields = {"updated_at", "title", "phase", "status", "created_at",
+                   "cluster", "potentie", "risico", "capaciteitsvraag"}
     if sort in sort_fields:
         column = getattr(Initiative, sort, None)
         if column:
