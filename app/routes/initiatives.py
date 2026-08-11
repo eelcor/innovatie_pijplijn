@@ -141,6 +141,9 @@ async def initiatief_detail(
     # Haal alle actieve tags op voor dropdown
     all_tags = db.query(Tag).filter(Tag.is_active == True).order_by(Tag.name.asc()).all()
 
+    # v0.2: haal alle initiatieven op voor gerelateerde-initiatieven selector
+    all_initiatives_for_related = db.query(Initiative).order_by(Initiative.title.asc()).all()
+
     return render_template(
         "initiative_detail.html",
         request=request,
@@ -151,6 +154,7 @@ async def initiatief_detail(
         all_mds=all_mds,
         all_tags=all_tags,
         initiative_tag_ids=tag_ids,
+        all_initiatives_for_related=all_initiatives_for_related,
     )
 
 
@@ -295,9 +299,15 @@ async def initiatief_bewerken(
     # Verwerk special fields apart (niet als reguliere attributen)
     cq_ids = update_data.pop("central_question_ids", None)
     tag_ids = update_data.pop("tag_ids", None)
+    # v0.2: gerelateerde initiatieven IDs → opslaan als komma-gesepereerde lijst
+    related_ids = update_data.pop("gerelateerde_initiatieven_ids", None)
 
     for key, value in update_data.items():
         setattr(initiative, key, value)
+
+    # v0.2: sla gerelateerde IDs op als komma-gesepereerde string
+    if related_ids is not None:
+        initiative.gerelateerde_initiatieven = ", ".join(related_ids) if related_ids else None
 
     db.commit()
     db.refresh(initiative)

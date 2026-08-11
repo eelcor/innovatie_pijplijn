@@ -273,11 +273,28 @@
       </details>
       {% endif %}
 
-      <!-- v0.2: Gerelateerde initiatieven -->
+      <!-- v0.2: Gerelateerde initiatieven (als links) -->
       {% if initiative.gerelateerde_initiatieven %}
       <div style="margin-top: 16px;">
-        <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-bottom: 4px;">Gerelateerde initiatieven</div>
-        <div style="font-size: 13px; color: var(--fg);">{{ initiative.gerelateerde_initiatieven }}</div>
+        <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-bottom: 6px;">Gerelateerde initiatieven</div>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          {% set related_ids = initiative.gerelateerde_initiatieven.split(",") %}
+          {% for rel_id in related_ids %}
+          {% set rel_id_stripped = rel_id.strip() %}
+          {% set rel_init = all_initiatives_for_related | selectattr('id', 'equalto', rel_id_stripped) | list | first %}
+          {% if rel_init %}
+          <a href="{{ url_for('initiative_detail', id=rel_init.id) }}" style="font-size: 13px; color: var(--accent); text-decoration: none; display: flex; align-items: center; gap: 4px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+              <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
+              <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+            </svg>
+            {{ rel_init.title[:60] }}{% if rel_init.title|length > 60 %}...{% endif %}
+          </a>
+          {% else %}
+          <span style="font-size: 13px; color: var(--muted);">{{ rel_id_stripped }}</span>
+          {% endif %}
+          {% endfor %}
+        </div>
       </div>
       {% endif %}
     </div>
@@ -693,11 +710,19 @@
           <div class="form-row">
             <div class="form-field">
               <label class="form-label">Gerelateerde initiatieven</label>
-              <input type="text" name="gerelateerde_initiatieven" class="form-input" value="{{ initiative.gerelateerde_initiatieven or '' }}" placeholder="Bijv. B-03, D-05">
+              <select name="gerelateerde_initiatieven_ids" id="edit-related-initiatives-select" class="form-select" multiple style="min-height: 100px;">
+                {% set current_related = initiative.gerelateerde_initiatieven.split(",") if initiative.gerelateerde_initiatieven else [] %}
+                {% for other in all_initiatives_for_related %}
+                {% if other.id != initiative.id %}
+                <option value="{{ other.id }}" {% if other.id in current_related %}selected{% endif %}>{{ other.title[:60] }}</option>
+                {% endif %}
+                {% endfor %}
+              </select>
+              <div class="form-hint">Houd Cmd (Mac) of Ctrl (Windows) ingedrukt om meerdere te selecteren.</div>
             </div>
             <div class="form-field">
               <label class="form-label">Opmerkingen</label>
-              <input type="text" name="opmerkingen" class="form-input" value="{{ initiative.opmerkingen or '' }}" placeholder="Algemene opmerkingen">
+              <textarea name="opmerkingen" class="form-textarea" style="min-height:100px;" placeholder="Algemene opmerkingen, notities, context...">{{ initiative.opmerkingen or '' }}</textarea>
             </div>
           </div>
         </fieldset>
@@ -1298,7 +1323,7 @@
     const data = {};
     formData.forEach((value, key) => {
       if (key === 'horizon' && !value) return;
-      if (key !== 'tag_ids') data[key] = value;
+      if (key !== 'tag_ids' && key !== 'gerelateerde_initiatieven_ids') data[key] = value;
     });
 
     // Handle multi-select tag_ids separately
@@ -1306,6 +1331,13 @@
     if (tagSelect) {
       const selectedTags = Array.from(tagSelect.selectedOptions).map(o => o.value);
       data['tag_ids'] = selectedTags;
+    }
+
+    // v0.2: Handle multi-select for related initiatives
+    const relatedSelect = document.getElementById('edit-related-initiatives-select');
+    if (relatedSelect) {
+      const selectedRelated = Array.from(relatedSelect.selectedOptions).map(o => o.value);
+      data['gerelateerde_initiatieven_ids'] = selectedRelated;
     }
 
     try {

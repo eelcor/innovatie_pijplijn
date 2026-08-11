@@ -81,7 +81,8 @@ class InitiativeUpdate(BaseModel):
     bron_initiatief: Optional[str] = None
     externe_partners: Optional[str] = None
     betrokkenheid_iv: Optional[BetrokkenheidIV] = None
-    gerelateerde_initiatieven: Optional[str] = None
+    gerelateerde_initiatieven: Optional[str] = None  # comma-sep string (legacy/import)
+    gerelateerde_initiatieven_ids: Optional[list[str]] = None  # multi-select uit UI
     volgende_stap: Optional[str] = None
     opmerkingen: Optional[str] = None
 

@@ -1510,9 +1510,119 @@
               </select>
             </div>
           </div>
+
+          <!-- v0.2: Context & Governance -->
+          <fieldset style="border:1px solid var(--border);border-radius:8px;padding:12px 14px 6px;margin:12px 0 0;">
+            <legend style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);padding:0 6px;">Context & Governance</legend>
+            <div class="form-row">
+              <div class="form-field">
+                <label class="form-label">Cluster</label>
+                <select name="cluster" class="form-select">
+                  <option value="">Selecteer cluster</option>
+                  {% set clusters = [
+                    ('Beheer', 'Beheer'),
+                    ('Interne Dienstverlening en Advisering', 'Dienstverlening & Adv.'),
+                    ('Participatie en Maatschappelijke Ontwikkeling', 'Participatie & Maatsch. Ontw.'),
+                    ('Publiekszaken Handhaving en Veiligheid', 'Publiekszaken & Veiligheid'),
+                    ('Stedelijke Ontwikkeling', 'Stedelijke Ontwikkeling'),
+                  ] %}
+                  {% for val, label in clusters %}
+                  <option value="{{ val }}">{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="form-label">Afdeling</label>
+                <input type="text" name="afdeling" class="form-input" placeholder="Afdeling">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-field">
+                <label class="form-label">Team</label>
+                <input type="text" name="team" class="form-input" placeholder="Team">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Bron initiatief</label>
+                <select name="bron_initiatief" class="form-select">
+                  <option value="">Selecteer bron</option>
+                  {% set brons = ['intern', 'idee interne medewerker', 'andere gemeente', 'externe leverancier', 'samenwerking partner', 'Functioneel beheer'] %}
+                  {% for b in brons %}
+                  <option value="{{ b }}">{{ bronLabel(b) }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-field">
+                <label class="form-label">Externe partners</label>
+                <input type="text" name="externe_partners" class="form-input" placeholder="Externe partners">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Betrokkenheid IV</label>
+                <select name="betrokkenheid_iv" class="form-select">
+                  <option value="">Selecteer betrokkenheid</option>
+                  {% for b in betrokkenheid_iv_levels %}
+                  <option value="{{ b }}">{{ betrokkenheidLabel(b) }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- v0.2: Beleidsmatrix -->
+          <fieldset style="border:1px solid var(--border);border-radius:8px;padding:12px 14px 6px;margin:12px 0 0;">
+            <legend style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);padding:0 6px;">Beleidsmatrix</legend>
+            <div class="form-row">
+              <div class="form-field">
+                <label class="form-label">Potentie</label>
+                <select name="potentie" class="form-select">
+                  <option value="">Selecteer potentie</option>
+                  {% for p in potenties %}
+                  <option value="{{ p }}">{{ potentieLabel(p) }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="form-label">Risico</label>
+                <select name="risico" class="form-select">
+                  <option value="">Selecteer risico</option>
+                  {% for r in risico_levels %}
+                  <option value="{{ r }}">{{ risicoLabel(r) }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="form-label">Capaciteitsvraag</label>
+                <select name="capaciteitsvraag" class="form-select">
+                  <option value="">Selecteer capaciteit</option>
+                  {% for c in capaciteitsvragen %}
+                  <option value="{{ c }}">{{ capaciteitLabel(c) }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- v0.2: Actie & Notities -->
+          <fieldset style="border:1px solid var(--border);border-radius:8px;padding:12px 14px 6px;margin:12px 0 0;">
+            <legend style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);padding:0 6px;">Actie & Notities</legend>
+            <div class="form-field">
+              <label class="form-label">Volgende stap</label>
+              <textarea name="volgende_stap" class="form-textarea" style="min-height:60px;" placeholder="Wat is de volgende stap?"></textarea>
+            </div>
+            <div class="form-field">
+              <label class="form-label">Opmerkingen</label>
+              <textarea name="opmerkingen" class="form-textarea" style="min-height:80px;" placeholder="Algemene opmerkingen, notities, context..."></textarea>
+            </div>
+          </fieldset>
+
           <div class="form-field">
             <label class="form-label">Eigenaar / team</label>
             <input type="text" name="owner" class="form-input" placeholder="Wie is verantwoordelijk?">
+          </div>
+          <div class="form-field">
+            <label class="form-label">Trekker</label>
+            <input type="text" name="trekker" class="form-input" placeholder="Wie initieert/trekt?">
           </div>
           <div class="form-field">
             <label class="form-label">MDS</label>
