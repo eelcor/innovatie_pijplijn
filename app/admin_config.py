@@ -54,14 +54,36 @@ def _save(config: dict) -> None:
 
 
 def get_config() -> dict:
-    """Haal huidige configuratie op."""
-    return _load()
+    """Haal huidige effectieve configuratie op.
+
+    Combineert admin_config.json met environment variabelen zodat de
+    admin UI altijd de daadwerkelijk actieve waarden toont.
+    """
+    config = _load()
+    ai_cfg = get_ai_config_for_client()
+
+    # Vervang lege/missing waarden door effectieve waarden (van env of defaults)
+    result = dict(config)
+    if not result.get("ai_model_url"):
+        result["ai_model_url"] = ai_cfg["MODEL_URL"] or ""
+    if not result.get("ai_model_name"):
+        result["ai_model_name"] = ai_cfg["MODEL_NAME"]
+    if not result.get("ai_api_key"):
+        result["ai_api_key"] = "(via environment)" if ai_cfg["MODEL_API_KEY"] else ""
+    if "ai_enabled" not in result:
+        result["ai_enabled"] = ai_cfg["AI_ENABLED"]
+    if "ai_request_timeout" not in result:
+        result["ai_request_timeout"] = ai_cfg["REQUEST_TIMEOUT"]
+
+    return result
 
 
 def update_config(updates: dict) -> dict:
     """Update configuratie met nieuwe waarden.
 
     Retourneert de volledige bijgewerkte configuratie (zonder API key).
+    Lege string waarden worden verwijderd zodat environment variabelen
+    als fallback gebruikt worden.
     """
     config = _load()
     allowed_keys = set(DEFAULT_CONFIG.keys())
@@ -69,7 +91,10 @@ def update_config(updates: dict) -> dict:
         if key in allowed_keys:
             # Strip trailing slashes from model URL
             if key == "ai_model_url" and isinstance(value, str):
-                config[key] = value.rstrip("/")
+                value = value.rstrip("/")
+            # Remove empty string values so env vars act as fallback
+            if value == "" or value is None:
+                config.pop(key, None)
             else:
                 config[key] = value
     _save(config)
@@ -84,7 +109,8 @@ def update_config(updates: dict) -> dict:
 def get_ai_config_for_client() -> dict:
     """Haal AI configuratie op voor de ai_client module.
 
-    Combineert environment variabelen met admin config (admin config heeft prioriteit).
+    Prioriteit: admin_config.json > environment variabelen > defaults.
+    Alleen niet-lege waarden uit admin_config.json overschrijven env vars.
     """
     config = _load()
 
@@ -95,12 +121,27 @@ def get_ai_config_for_client() -> dict:
     env_enabled = os.environ.get("AI_ENABLED", "true").lower() in ("true", "1", "yes")
     env_timeout = float(os.environ.get("AI_REQUEST_TIMEOUT", "120"))
 
-    # Admin config heeft prioriteit boven environment (strip trailing slash)
-    model_url = (config.get("ai_model_url") or "").rstrip("/") or env_url
-    model_name = config.get("ai_model_name") or env_name
-    api_key = config.get("ai_api_key") or env_key
-    ai_enabled = config.get("ai_enabled", env_enabled)
-    timeout = config.get("ai_request_timeout", env_timeout)
+    # Admin config overschrijft env var ALLEEN als de waarde niet-lege is.
+    # Dit zorgt dat .env variabelen correct werken als defaults.
+    cfg_url = (config.get("ai_model_url") or "").rstrip("/")
+    cfg_name = config.get("ai_model_name") or ""
+    cfg_key = config.get("ai_api_key") or ""
+
+    model_url = cfg_url or env_url
+    model_name = cfg_name or env_name
+    api_key = cfg_key or env_key
+
+    # Voor boolean en numeriek: admin config overschrijft alleen als expliciet ingesteld
+    ai_enabled = config.get("ai_enabled", None)
+    if ai_enabled is None:
+        ai_enabled = env_enabled
+
+    timeout = config.get("ai_request_timeout", None)
+    if timeout is None:
+        timeout = env_timeout
+
+    temperature = config.get("ai_temperature", 0.7)
+    max_tokens = config.get("ai_max_tokens", 8192)
 
     return {
         "MODEL_URL": model_url,
@@ -108,6 +149,6 @@ def get_ai_config_for_client() -> dict:
         "MODEL_API_KEY": api_key,
         "AI_ENABLED": ai_enabled,
         "REQUEST_TIMEOUT": timeout,
-        "TEMPERATURE": config.get("ai_temperature", 0.7),
-        "MAX_TOKENS": config.get("ai_max_tokens", 8192),
+        "TEMPERATURE": temperature,
+        "MAX_TOKENS": max_tokens,
     }

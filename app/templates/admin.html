@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-header">
   <h1>Beheerpaneel</h1>
-  <p style="color:var(--muted);font-size:14px;">Gebruikersbeheer, backups, logs en modelconfiguratie</p>
+  <p style="color:var(--muted);font-size:14px;">Gebruikersbeheer, backups, logs, modelconfiguratie en profiel</p>
 </div>
 
 <!-- Tabs -->
@@ -12,6 +12,7 @@
   <button class="tab" onclick="switchTab('backup')">Backup & Restore</button>
   <button class="tab" onclick="switchTab('logs')">Logs</button>
   <button class="tab" onclick="switchTab('config')">Model Configuratie</button>
+  <button class="tab" onclick="switchTab('profile')">Mijn profiel</button>
 </div>
 
 <!-- Tab: Gebruikersbeheer -->
@@ -173,6 +174,66 @@
         <button type="submit" class="btn btn-primary" id="save-config-btn">Opslaan</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- Tab: Mijn profiel (voor admin) -->
+<div class="tab-content" id="tab-profile">
+  <h2 style="font-size:18px;font-weight:600;margin-bottom:16px;">Mijn profiel</h2>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+    <!-- Account info -->
+    <div class="card">
+      <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;">Account informatie</h3>
+      <table style="width:100%;font-size:13px;border-collapse:collapse;">
+        <tr>
+          <td style="padding:6px 0;color:var(--muted);border-bottom:1px solid var(--border);width:120px;">Gebruikersnaam</td>
+          <td style="padding:6px 0;border-bottom:1px solid var(--border);font-weight:500;" id="admin-profile-username">—</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 0;color:var(--muted);border-bottom:1px solid var(--border);">Rol</td>
+          <td style="padding:6px 0;border-bottom:1px solid var(--border);" id="admin-profile-role">—</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 0;color:var(--muted);border-bottom:1px solid var(--border);">Laatste login</td>
+          <td style="padding:6px 0;border-bottom:1px solid var(--border);" id="admin-profile-last-login">—</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Wachtwoord wijzigen -->
+    <div class="card">
+      <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;">Wachtwoord wijzigen</h3>
+      <form id="admin-password-form" onsubmit="changeAdminPassword(event)">
+        <div class="form-group">
+          <input type="password" id="admin-current-password" required placeholder="Huidig wachtwoord" style="width:100%;padding:6px 10px;font-size:13px;background:var(--surface);border:1px solid var(--border);color:var(--fg);font-family:var(--font-body);">
+        </div>
+        <div class="form-group">
+          <input type="password" id="admin-new-password" required minlength="4" placeholder="Nieuw wachtwoord" style="width:100%;padding:6px 10px;font-size:13px;background:var(--surface);border:1px solid var(--border);color:var(--fg);font-family:var(--font-body);">
+        </div>
+        <div class="form-group">
+          <input type="password" id="admin-confirm-password" required minlength="4" placeholder="Bevestig nieuw wachtwoord" style="width:100%;padding:6px 10px;font-size:13px;background:var(--surface);border:1px solid var(--border);color:var(--fg);font-family:var(--font-body);">
+        </div>
+        <div id="admin-password-result" style="display:none;margin-top:8px;"></div>
+        <button type="submit" class="btn btn-primary" id="admin-change-password-btn" style="margin-top:8px;padding:6px 16px;font-size:13px;">Wijzigen</button>
+      </form>
+    </div>
+
+    <!-- Excel export -->
+    <div class="card" style="grid-column:1/-1;">
+      <h3 style="font-size:14px;font-weight:600;margin-bottom:12px;">Data exporteren</h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">
+        Exporteer alle data naar Excel (initiatieven, hypothesen, curaties, centrale vragen).
+      </p>
+      <button class="btn btn-secondary" onclick="exportExcelFromAdmin()" id="admin-export-btn" style="padding:6px 16px;font-size:13px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="7,10 12,15 17,10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Excel exporteren
+      </button>
+    </div>
   </div>
 </div>
 
@@ -338,6 +399,7 @@ function switchTab(tabName) {
   else if (tabName === 'backup') loadBackups();
   else if (tabName === 'logs') loadLogs();
   else if (tabName === 'config') loadConfig();
+  else if (tabName === 'profile') loadAdminProfile();
 }
 
 // ===== Gebruikersbeheer =====
@@ -721,6 +783,97 @@ async function saveConfig(event) {
   } finally {
     btn.disabled = false;
     btn.textContent = 'Opslaan';
+  }
+}
+
+// ===== Profiel (admin) =====
+
+async function loadAdminProfile() {
+  try {
+    const user = await apiCall('/api/auth/me');
+    document.getElementById('admin-profile-username').textContent = user.username;
+    document.getElementById('admin-profile-role').innerHTML = `<span class="role-badge role-${user.role}">${user.role}</span>`;
+    document.getElementById('admin-profile-last-login').textContent = user.last_login
+      ? new Date(user.last_login).toLocaleString('nl-NL')
+      : 'Nooit';
+  } catch (e) {
+    console.error('Profiel laden mislukt:', e);
+  }
+}
+
+async function changeAdminPassword(event) {
+  event.preventDefault();
+  const btn = document.getElementById('admin-change-password-btn');
+  const resultDiv = document.getElementById('admin-password-result');
+
+  const current = document.getElementById('admin-current-password').value;
+  const newPass = document.getElementById('admin-new-password').value;
+  const confirm = document.getElementById('admin-confirm-password').value;
+
+  if (newPass !== confirm) {
+    resultDiv.style.display = 'block';
+    resultDiv.className = 'import-result error';
+    resultDiv.innerHTML = '<p style="font-size:13px;">Nieuwe wachtwoorden komen niet overeen.</p>';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Bezig...';
+  resultDiv.style.display = 'none';
+
+  try {
+    await apiCall('/api/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ current_password: current, new_password: newPass }),
+    });
+
+    resultDiv.style.display = 'block';
+    resultDiv.className = 'import-result success';
+    resultDiv.innerHTML = '<p style="font-size:13px;">Wachtwoord succesvol gewijzigd!</p>';
+    document.getElementById('admin-password-form').reset();
+  } catch (e) {
+    resultDiv.style.display = 'block';
+    resultDiv.className = 'import-result error';
+    resultDiv.innerHTML = `<p style="font-size:13px;">${typeof e === 'string' ? escapeHtml(e) : escapeHtml(String(e))}</p>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Wijzigen';
+  }
+}
+
+async function exportExcelFromAdmin() {
+  const btn = document.getElementById('admin-export-btn');
+  btn.disabled = true;
+  btn.textContent = 'Bezig...';
+
+  try {
+    const response = await fetch('/api/export/excel', {
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Export mislukt' }));
+      throw new Error(error.detail || 'Export mislukt');
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'innovatiepijplijn_export.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+
+    showToast('Excel bestand wordt gedownload');
+  } catch (e) {
+    console.error('Export mislukt:', e);
+    showToast(typeof e === 'string' ? e : String(e));
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Excel exporteren`;
   }
 }
 

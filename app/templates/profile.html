@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Mijn profiel</h1>
+  <p style="color:var(--muted);font-size:14px;">Gebruikersinformatie, wachtwoord en export</p>
+</div>
+
+<!-- Tabs -->
+<div class="tabs" id="profile-tabs">
+  <button class="tab active" onclick="switchProfileTab('account')">Account</button>
+  <button class="tab" onclick="switchProfileTab('password')">Wachtwoord</button>
+  <button class="tab" onclick="switchProfileTab('export')">Export</button>
+</div>
+
+<!-- Tab: Account info -->
+<div class="tab-content active" id="profile-tab-account">
+  <div class="card" style="max-width:600px;">
+    <h2 style="font-size:16px;font-weight:600;margin-bottom:16px;">Account informatie</h2>
+    <table style="width:100%;font-size:14px;border-collapse:collapse;">
+      <tr>
+        <td style="padding:8px 0;color:var(--muted);border-bottom:1px solid var(--border);width:160px;">Gebruikersnaam</td>
+        <td style="padding:8px 0;border-bottom:1px solid var(--border);font-weight:500;" id="profile-username">—</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;color:var(--muted);border-bottom:1px solid var(--border);">Rol</td>
+        <td style="padding:8px 0;border-bottom:1px solid var(--border);" id="profile-role">—</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;color:var(--muted);border-bottom:1px solid var(--border);">Status</td>
+        <td style="padding:8px 0;border-bottom:1px solid var(--border);" id="profile-status">—</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;color:var(--muted);border-bottom:1px solid var(--border);">Laatste login</td>
+        <td style="padding:8px 0;border-bottom:1px solid var(--border);" id="profile-last-login">—</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;color:var(--muted);">Lid sinds</td>
+        <td style="padding:8px 0;" id="profile-created">—</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- Tab: Wachtwoord wijzigen -->
+<div class="tab-content" id="profile-tab-password">
+  <div class="card" style="max-width:500px;">
+    <h2 style="font-size:16px;font-weight:600;margin-bottom:16px;">Wachtwoord wijzigen</h2>
+    <form id="password-form" onsubmit="changePassword(event)">
+      <div class="form-group">
+        <label for="current-password">Huidig wachtwoord</label>
+        <input type="password" id="current-password" required minlength="1" maxlength="72" style="width:100%;padding:8px 12px;font-size:14px;background:var(--surface);border:1px solid var(--border);color:var(--fg);font-family:var(--font-body);">
+      </div>
+      <div class="form-group">
+        <label for="new-password">Nieuw wachtwoord</label>
+        <input type="password" id="new-password" required minlength="4" maxlength="72" style="width:100%;padding:8px 12px;font-size:14px;background:var(--surface);border:1px solid var(--border);color:var(--fg);font-family:var(--font-body);">
+        <p class="help-text">Minimaal 4 karakters</p>
+      </div>
+      <div class="form-group">
+        <label for="confirm-password">Bevestig nieuw wachtwoord</label>
+        <input type="password" id="confirm-password" required minlength="4" maxlength="72" style="width:100%;padding:8px 12px;font-size:14px;background:var(--surface);border:1px solid var(--border);color:var(--fg);font-family:var(--font-body);">
+      </div>
+      <div id="password-result" style="display:none;margin-top:16px;"></div>
+      <div style="margin-top:20px;">
+        <button type="submit" class="btn btn-primary" id="change-password-btn">Wachtwoord wijzigen</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Tab: Export -->
+<div class="tab-content" id="profile-tab-export">
+  <div class="card" style="max-width:600px;">
+    <h2 style="font-size:16px;font-weight:600;margin-bottom:16px;">Data exporteren</h2>
+    <p style="font-size:14px;color:var(--fg);margin-bottom:12px;">
+      Exporteer alle data naar een Excel-bestand met meerdere tabs:
+    </p>
+    <ul style="font-size:13px;color:var(--muted);margin-bottom:20px;padding-left:20px;">
+      <li><strong>Initiatieven</strong> — overzicht van alle initiatieven met fase, status, eigenaar</li>
+      <li><strong>Centrale vragen</strong> — strategische vraagstukken met aantallen</li>
+      <li><strong>Hypothesen</strong> — alle hypothesen met leeruitkomsten</li>
+      <li><strong>Curaties</strong> — curatie-overzichten en -items</li>
+    </ul>
+    <button class="btn btn-primary" onclick="exportExcel()" id="export-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+        <polyline points="7,10 12,15 17,10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      Excel exporteren
+    </button>
+    <p class="help-text" style="margin-top:8px;">
+      Vereist admin of editor rol. Het bestand wordt automatisch gedownload.
+    </p>
+  </div>
+</div>
+
+<style>
+  .tabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:24px; }
+  .tab {
+    padding:10px 20px; font-size:13px; font-weight:500; cursor:pointer;
+    background:none; border:none; color:var(--muted); font-family:var(--font-body);
+    border-bottom:2px solid transparent; transition:all 0.1s;
+  }
+  .tab:hover { color:var(--fg); }
+  .tab.active { color:var(--fg); border-bottom-color:var(--fg); }
+
+  .tab-content { display:none; }
+  .tab-content.active { display:block; }
+
+  .form-group { margin-bottom:16px; }
+  .form-group label { display:block; font-size:13px; font-weight:500; color:var(--fg); margin-bottom:4px; }
+  .help-text { font-size:12px; color:var(--muted); margin-top:4px; }
+
+  .result-success {
+    padding:12px 16px; border-radius:6px; font-size:13px;
+    background:#dcfce7; border:1px solid #22c55e; color:#166534;
+  }
+  .result-error {
+    padding:12px 16px; border-radius:6px; font-size:13px;
+    background:#fef2f2; border:1px solid #ef4444; color:#991b1b;
+  }
+
+  .role-badge {
+    display:inline-block; padding:2px 8px; font-size:11px; font-weight:600;
+    border-radius:3px; text-transform:uppercase; letter-spacing:0.04em;
+  }
+  .role-admin { background:var(--accent-subtle); color:var(--accent); }
+  .role-editor { background:var(--pilot-subtle); color:var(--pilot); }
+  .role-viewer { background:var(--verkenning-subtle); color:var(--verkenning); }
+</style>
+
+<script>
+// Tab switching
+function switchProfileTab(tabName) {
+  document.querySelectorAll('#profile-tabs .tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('[id^="profile-tab-"]').forEach(c => c.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('profile-tab-' + tabName).classList.add('active');
+}
+
+// Load profile info
+async function loadProfile() {
+  try {
+    const user = await apiCall('/api/auth/me');
+    document.getElementById('profile-username').textContent = user.username;
+    document.getElementById('profile-role').innerHTML = `<span class="role-badge role-${user.role}">${user.role}</span>`;
+    document.getElementById('profile-status').innerHTML = user.is_active
+      ? '<span style="color:var(--success);font-weight:500;">Actief</span>'
+      : '<span style="color:var(--stopped);font-weight:500;">Inactief</span>';
+    document.getElementById('profile-last-login').textContent = user.last_login
+      ? new Date(user.last_login).toLocaleString('nl-NL')
+      : 'Nooit';
+  } catch (e) {
+    console.error('Profiel laden mislukt:', e);
+  }
+}
+
+// Change password
+async function changePassword(event) {
+  event.preventDefault();
+  const btn = document.getElementById('change-password-btn');
+  const resultDiv = document.getElementById('password-result');
+
+  const current = document.getElementById('current-password').value;
+  const newPass = document.getElementById('new-password').value;
+  const confirm = document.getElementById('confirm-password').value;
+
+  // Client-side validation
+  if (newPass !== confirm) {
+    resultDiv.style.display = 'block';
+    resultDiv.className = 'result-error';
+    resultDiv.textContent = 'Nieuwe wachtwoorden komen niet overeen.';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Bezig...';
+  resultDiv.style.display = 'none';
+
+  try {
+    await apiCall('/api/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({
+        current_password: current,
+        new_password: newPass,
+      }),
+    });
+
+    resultDiv.style.display = 'block';
+    resultDiv.className = 'result-success';
+    resultDiv.textContent = 'Wachtwoord succesvol gewijzigd!';
+    document.getElementById('password-form').reset();
+  } catch (e) {
+    resultDiv.style.display = 'block';
+    resultDiv.className = 'result-error';
+    resultDiv.textContent = typeof e === 'string' ? e : String(e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Wachtwoord wijzigen';
+  }
+}
+
+// Excel export
+async function exportExcel() {
+  const btn = document.getElementById('export-btn');
+  btn.disabled = true;
+  btn.textContent = 'Bezig...';
+
+  try {
+    // Fetch the file as blob
+    const csrfToken = await getCsrfToken();
+    const response = await fetch('/api/export/excel', {
+      credentials: 'same-origin',
+      headers: {
+        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Export mislukt' }));
+      throw new Error(error.detail || 'Export mislukt');
+    }
+
+    // Trigger download
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'innovatiepijplijn_export.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+
+    showToast('Excel bestand wordt gedownload');
+  } catch (e) {
+    console.error('Export mislukt:', e);
+    showToast(typeof e === 'string' ? e : String(e));
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Excel exporteren`;
+  }
+}
+
+// Load profile on page load
+document.addEventListener('DOMContentLoaded', loadProfile);
+</script>
+{% endblock %}

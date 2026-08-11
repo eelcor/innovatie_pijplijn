@@ -1241,6 +1241,18 @@
         </a>
       </nav>
 
+      <!-- Profiel link (alle ingelogde gebruikers) -->
+      <nav class="nav-section" id="profile-nav">
+        <div class="nav-label">Persoonlijk</div>
+        <a href="/profiel" class="nav-item {% if active_page == 'profiel' %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+          Mijn profiel
+        </a>
+      </nav>
+
       <!-- User section (bottom of sidebar) -->
       <div class="user-section" id="user-section" style="margin-top:auto; padding-top:16px; border-top:1px solid var(--border);">
         <div class="user-info" id="user-info" style="display:flex; align-items:center; gap:8px; padding:4px 0; font-size:13px; color:var(--muted);">

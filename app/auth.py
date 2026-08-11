@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.logging_config import logger
 from app.models import (
     User, ROLE_ADMIN, ROLE_EDITOR, ROLE_VIEWER, ALL_ROLES,
     Permission, RolePermission,
@@ -397,6 +398,45 @@ async def current_user_info(
         "role": current_user.role,
         "is_active": current_user.is_active,
         "last_login": current_user.last_login.isoformat() if current_user.last_login else None,
+    }
+
+
+class ChangePasswordRequest(BaseModel):
+    """Wachtwoord wijzigen request."""
+    current_password: str = Field(..., min_length=1, max_length=72)
+    new_password: str = Field(..., min_length=4, max_length=72)
+
+
+@router.post("/change-password")
+async def change_password(
+    data: ChangePasswordRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Wijzig eigen wachtwoord.
+
+    Elke ingelogde gebruiker kan hun eigen wachtwoord wijzigen.
+    Het huidige wachtwoord moet correct zijn.
+    """
+    # Verifieer huidig wachtwoord
+    if not verify_password(data.current_password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Huidig wachtwoord is onjuist")
+
+    # Valideer nieuw wachtwoord
+    if data.new_password == data.current_password:
+        raise HTTPException(status_code=400, detail="Nieuw wachtwoord moet verschillen van het huidige")
+
+    # Controleer op brute-force: max 100 bytes voor bcrypt
+    if len(data.new_password.encode("utf-8")) > 72:
+        raise HTTPException(status_code=400, detail="Wachtwoord is te lang (max 72 karakters)")
+
+    # Update wachtwoord
+    current_user.password_hash = hash_password(data.new_password)
+    db.commit()
+
+    logger.info(f"Wachtwoord gewijzigd door gebruiker: {current_user.username}")
+    return {
+        "message": "Wachtwoord succesvol gewijzigd",
     }
 
 

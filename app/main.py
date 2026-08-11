@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
-from app.auth import ensure_admin_user, router as auth_router, require_admin, load_permissions_cache
+from app.auth import ensure_admin_user, router as auth_router, require_admin, load_permissions_cache, get_current_user
 from app.csrf import CSRFMiddleware, AuthMiddleware, router as csrf_router
 from app.database import init_db, get_db, DB_PATH
 from app.helpers import BASE_DIR, templates, get_base_url
@@ -150,6 +150,25 @@ async def admin_page(
         "admin.html",
         request=request,
         active_page="admin",
+        current_user=current_user,
+    )
+
+
+@app.get("/profiel")
+async def profile_page(
+    request: Request,
+    current_user: "User" = Depends(get_current_user),
+):
+    """Profielpagina — beschikbaar voor alle ingelogde gebruikers.
+
+    Toont gebruikersinformatie, wachtwoord wijzigen, en Excel export.
+    Admins zien hier alleen profiel+wachtwoord (beheer zit in /admin).
+    """
+    from app.helpers import render_template
+    return render_template(
+        "profile.html",
+        request=request,
+        active_page="profiel",
         current_user=current_user,
     )
 
