@@ -5,11 +5,12 @@
 | Onderwerp | Detail |
 |-----------|--------|
 | **Tech stack** | Python 3.11, FastAPI, SQLite, HTMX |
+| **Versie** | v0.2.0 (beleidsmatrix, governance, gerelateerde initiatieven) |
 | **Default poort** | `8000` |
 | **Database** | SQLite (WAL mode) in `/app/data/innovatiepijplijn.db` |
 | **Health check** | `GET /health` → HTTP 200 + JSON |
 | **Admin API** | `GET /api/admin/status`, `GET /api/admin/config` |
-| **Backups** | `POST /api/admin/backup` |
+| **Backups** | `POST /api/admin/backup`, `GET /api/admin/backup/export/{name}` |
 
 ---
 
@@ -59,6 +60,47 @@ pip install uv && uv sync --frozen
 
 # Start
 APP_PORT=8000 python -m uvicorn app.main:app --reload --host 0.0.0.0
+```
+
+---
+
+## Database Migratie (v0.2)
+
+### Nieuwe velden in Initiative model
+
+Versie 0.2 voegt 12 nieuwe kolommen toe aan de `initiatives` tabel:
+| Kolom | Type | Doel |
+|-------|------|------|
+| `cluster` | TEXT | Domeinindeling (Beheer, Dienstverlening, etc.) |
+| `afdeling` | TEXT | Organisatorische eenheid |
+| `team` | TEXT | Team naam |
+| `potentie` | TEXT | Potentiewaardering (hoog/midden/onbekend) |
+| `capaciteitsvraag` | TEXT | Capaciteitseis (hoog/midden/laag/onbekend) |
+| `risico` | TEXT | Risicowaardering (hoog/midden/laag) |
+| `bron_initiatief` | TEXT | Oorsprong van het initiatief |
+| `externe_partners` | TEXT | Externe samenwerking |
+| `betrokkenheid_iv` | TEXT | IV-betrokkenheidsniveau |
+| `gerelateerde_initiatieven` | TEXT | Koppelingen naar andere initiatieven (IDs) |
+| `volgende_stap` | TEXT | Actiepunten en volgende stappen |
+| `opmerkingen` | TEXT | Algemene notities |
+
+### Migratie uitvoeren
+
+Bij een upgrade van v0.1 naar v0.2:
+```bash
+# Optioneel: handmatige migratie (meestal automatisch bij Docker rebuild)
+docker compose exec innovatiepijplijn python3 /app/scripts/migrate_v02.py
+```
+
+### Excel import
+
+Importeer initiatieven uit een Excel-bestand:
+```bash
+# Kopieer bestand naar container
+docker compose cp inventarisatie.xlsx innovatiepijplijn:/tmp/import.xlsx
+
+# Voer import uit
+docker compose exec innovatiepijplijn python3 /app/scripts/import_excel_v02.py
 ```
 
 ---
