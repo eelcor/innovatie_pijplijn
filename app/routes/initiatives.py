@@ -144,6 +144,23 @@ async def initiatief_detail(
     # v0.2: haal alle initiatieven op voor gerelateerde-initiatieven selector
     all_initiatives_for_related = db.query(Initiative).order_by(Initiative.title.asc()).all()
 
+    # v0.2: resolve gerelateerde initiatieven (UUID of korte code → Initiative object)
+    related_initiatives = []
+    if initiative.gerelateerde_initiatieven:
+        for ref in initiative.gerelateerde_initiatieven.split(","):
+            ref = ref.strip()
+            if not ref:
+                continue
+            # Probeer eerst op UUID
+            matched = db.query(Initiative).filter(Initiative.id == ref).first()
+            # Als geen match, probeer op korte code in titel (bijv. [IDA-01])
+            if not matched and "-" in ref:
+                matched = db.query(Initiative).filter(
+                    Initiative.title.like(f"[{ref}]%")
+                ).first()
+            if matched:
+                related_initiatives.append(matched)
+
     return render_template(
         "initiative_detail.html",
         request=request,
@@ -155,6 +172,7 @@ async def initiatief_detail(
         all_tags=all_tags,
         initiative_tag_ids=tag_ids,
         all_initiatives_for_related=all_initiatives_for_related,
+        related_initiatives=related_initiatives,
     )
 
 

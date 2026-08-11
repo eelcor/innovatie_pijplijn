@@ -274,15 +274,11 @@
       {% endif %}
 
       <!-- v0.2: Gerelateerde initiatieven (als links) -->
-      {% if initiative.gerelateerde_initiatieven %}
+      {% if related_initiatives %}
       <div style="margin-top: 16px;">
         <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-bottom: 6px;">Gerelateerde initiatieven</div>
         <div style="display: flex; flex-direction: column; gap: 4px;">
-          {% set related_ids = initiative.gerelateerde_initiatieven.split(",") %}
-          {% for rel_id in related_ids %}
-          {% set rel_id_stripped = rel_id.strip() %}
-          {% set rel_init = all_initiatives_for_related | selectattr('id', 'equalto', rel_id_stripped) | list | first %}
-          {% if rel_init %}
+          {% for rel_init in related_initiatives %}
           <a href="{{ url_for('initiative_detail', id=rel_init.id) }}" style="font-size: 13px; color: var(--accent); text-decoration: none; display: flex; align-items: center; gap: 4px;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
               <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
@@ -290,9 +286,6 @@
             </svg>
             {{ rel_init.title[:60] }}{% if rel_init.title|length > 60 %}...{% endif %}
           </a>
-          {% else %}
-          <span style="font-size: 13px; color: var(--muted);">{{ rel_id_stripped }}</span>
-          {% endif %}
           {% endfor %}
         </div>
       </div>
@@ -1333,11 +1326,10 @@
   var selectedRelatedIds = [];
 
   function initRelatedSelector() {
-    // Haal huidige gerelateerde IDs op
+    // Haal huidige gerelateerde IDs op (gebruik resolved UUID's van backend)
     selectedRelatedIds = [];
-    {% set current_related = initiative.gerelateerde_initiatieven.split(",") if initiative.gerelateerde_initiatieven else [] %}
-    {% for rel_id in current_related %}
-    selectedRelatedIds.push("{{ rel_id.strip() }}");
+    {% for rel in related_initiatives %}
+    selectedRelatedIds.push("{{ rel.id }}");
     {% endfor %}
 
     renderRelatedBadges();
