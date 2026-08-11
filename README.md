@@ -330,6 +330,13 @@ Volledige API documentatie is beschikbaar op `/docs` na het starten van de appli
 
 ## Wijzigingen (Changelog)
 
+### v0.2.1 — Bugfix: formulieren en error handling
+- Fix: opslaan bewerkt initiatief werkte niet (lege strings → 422 validatiefout)
+- Fix: error toast toonde `[Object Object]` in plaats van leesbaar bericht
+- Backend: `field_validator` converteert lege strings naar `None` voor alle optionele velden
+- Frontend: formulieren filteren lege strings voordat ze naar API gaan
+- Error handling: FastAPI validation errors worden nu correct getoond
+
 ### v0.2.0 — Beleidsmatrix, Governance & Verbeterde UI
 **Nieuwe data-modellen:**
 - 12 nieuwe velden per initiatief: cluster, afdeling, team, potentie, risico, capaciteitsvraag, bron_initiatief, externe_partners, betrokkenheid_iv, gerelateerde_initiatieven, volgende_stap, opmerkingen

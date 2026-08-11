@@ -158,6 +158,7 @@ curl http://localhost:8000/health
 
 | Versie | Wijzigingen | Migratie nodig? |
 |--------|-------------|-----------------|
+| v0.2.1 | Bugfix: formulieren en error handling | Nee |
 | v0.2.0 | Beleidsmatrix, governance, gerelateerde initiatieven | Nee (auto bij rebuild) |
 | v0.1.0 | Initiële release | — |
 

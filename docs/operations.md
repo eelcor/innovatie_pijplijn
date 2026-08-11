@@ -5,7 +5,7 @@
 | Onderwerp | Detail |
 |-----------|--------|
 | **Tech stack** | Python 3.11, FastAPI, SQLite, HTMX |
-| **Versie** | v0.2.0 (beleidsmatrix, governance, gerelateerde initiatieven) |
+| **Versie** | v0.2.1 (beleidsmatrix, governance, bugfix formulieren) |
 | **Default poort** | `8000` |
 | **Database** | SQLite (WAL mode) in `/app/data/innovatiepijplijn.db` |
 | **Health check** | `GET /health` → HTTP 200 + JSON |
