@@ -39,3 +39,7 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Input data (containt gevoelige/initiatief data)
+20260806 Input/
+*.xlsx
