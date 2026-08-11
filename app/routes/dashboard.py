@@ -231,6 +231,19 @@ async def filter_initiatives(
                 "phase": i.phase,
                 "status": i.status,
                 "horizon": i.horizon,
+                # v0.2: nieuwe velden
+                "cluster": i.cluster,
+                "afdeling": i.afdeling,
+                "team": i.team,
+                "potentie": i.potentie,
+                "capaciteitsvraag": i.capaciteitsvraag,
+                "risico": i.risico,
+                "bron_initiatief": i.bron_initiatief,
+                "externe_partners": i.externe_partners,
+                "betrokkenheid_iv": i.betrokkenheid_iv,
+                "gerelateerde_initiatieven": i.gerelateerde_initiatieven,
+                "volgende_stap": i.volgende_stap,
+                "opmerkingen": i.opmerkingen,
                 "updated_at": i.updated_at.isoformat() if i.updated_at else None,
             }
             for i in initiatives

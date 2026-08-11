@@ -124,6 +124,7 @@
     no_central_question: false,
     search: '',
     loading: false,
+    view: localStorage.getItem('initiatives_view') || 'cards',  // 'cards' of 'list'
   };
 
   // Debounce helper
@@ -225,38 +226,119 @@
             container.innerHTML = '<div class="empty-state" style="padding:40px;text-align:center;"><div style="font-size:14px;font-weight:600;color:var(--fg);margin-bottom:4px;">Geen resultaten</div><div style="font-size:13px;color:var(--muted);">Probeer andere filters of zoektermen.</div></div>';
             if (countEl) countEl.textContent = '';
           } else {
-            var html = '<div class="cards-grid">';
+            var html = '';
 
-            data.initiatives.forEach(function(init) {
-              var phaseClass = init.status === 'gestopt' ? 'gestopt' : init.phase;
-              var phaseLabels = {idee:'Idee', verkenning:'Verkenning', experiment:'Experiment', pilot:'Pilot', opschaling:'Opschaling'};
-              var phaseName = phaseLabels[init.phase] || init.phase;
+            if (filterState.view === 'list') {
+              // === LIST VIEW ===
+              html += '<div class="initiatives-list-view">';
+              html += '<div class="list-header-row">';
+              html += '<span class="list-col-title">Initiatief</span>';
+              html += '<span class="list-col-cluster">Cluster</span>';
+              html += '<span class="list-col-phase">Fase</span>';
+              html += '<span class="list-col-status">Status</span>';
+              html += '<span class="list-col-metric">Potentie</span>';
+              html += '<span class="list-col-metric">Risico</span>';
+              html += '<span class="list-col-date">Gewijzigd</span>';
+              html += '</div>';
 
-              var horizonHtml = '';
-              var horizonLabels = {h1:'H1', h2:'H2', h3:'H3'};
-              if (init.horizon && horizonLabels[init.horizon]) {
-                horizonHtml = '<span class="horizon-badge">' + horizonLabels[init.horizon] + '</span>';
-              }
+              data.initiatives.forEach(function(init) {
+                var phaseClass = init.status === 'gestopt' ? 'gestopt' : init.phase;
+                var phaseLabels = {idee:'Idee', verkenning:'Verkenning', experiment:'Experiment', pilot:'Pilot', opschaling:'Opschaling'};
+                var phaseName = phaseLabels[init.phase] || init.phase;
 
-              var statusName = init.status.charAt(0).toUpperCase() + init.status.slice(1);
+                var statusName = init.status.charAt(0).toUpperCase() + init.status.slice(1);
 
-              html += '<a href="' + ROUTES.initiativeDetail.replace('__ID__', init.id) + '" class="initiative-card">';
-              html += '<div class="card-header"><span class="card-title">' + escapeHtml(init.title) + '</span>';
-              html += '<span class="phase-badge phase-' + phaseClass + '">' + phaseName + '</span></div>';
+                // Cluster badge
+                var clusterHtml = '';
+                if (init.cluster) {
+                  var clusterClassMap = {
+                    'Beheer': 'cluster-beheer',
+                    'Interne Dienstverlening en Advisering': 'cluster-dienstverlening',
+                    'Participatie en Maatschappelijke Ontwikkeling': 'cluster-participatie',
+                    'Publiekszaken Handhaving en Veiligheid': 'cluster-publiekszaken',
+                    'Stedelijke Ontwikkeling': 'cluster-stedelijke',
+                  };
+                  var clusterLabels = {
+                    'Beheer': 'Beheer',
+                    'Interne Dienstverlening en Advisering': 'Dienstverlening',
+                    'Participatie en Maatschappelijke Ontwikkeling': 'Participatie',
+                    'Publiekszaken Handhaving en Veiligheid': 'Publiekszaken',
+                    'Stedelijke Ontwikkeling': 'Stedelijke Ontw.',
+                  };
+                  var cc = clusterClassMap[init.cluster] || '';
+                  var cl = clusterLabels[init.cluster] || init.cluster;
+                  clusterHtml = '<span class="cluster-badge ' + cc + '">' + escapeHtml(cl) + '</span>';
+                }
 
-              if (init.description) {
-                var desc = init.description.length >= 100 ? init.description.substring(0, 100) + '...' : init.description;
-                html += '<p class="card-description">' + escapeHtml(desc) + '</p>';
-              }
+                // Potentie badge
+                var potentieHtml = '';
+                if (init.potentie) {
+                  var pLabels = {hoog:'Hoog', midden:'Midden', onbekend:'Onbekend'};
+                  potentieHtml = '<span class="metric-badge metric-' + init.potentie + '">' + (pLabels[init.potentie] || init.potentie) + '</span>';
+                }
 
-              html += '<div class="card-meta">';
-              if (horizonHtml) html += horizonHtml;
-              html += '<span class="card-meta-item"><span class="status-dot status-' + init.status + '"></span>' + statusName + '</span>';
-              html += '<span class="meta-text">' + formatDate(init.updated_at) + '</span>';
-              html += '</div></a>';
-            });
+                // Risico badge
+                var risicoHtml = '';
+                if (init.risico) {
+                  var rLabels = {hoog:'Hoog', midden:'Midden', laag:'Laag'};
+                  risicoHtml = '<span class="metric-badge risico-' + init.risico + '">' + (rLabels[init.risico] || init.risico) + '</span>';
+                }
 
-            html += '</div>';
+                html += '<a href="' + ROUTES.initiativeDetail.replace('__ID__', init.id) + '" class="list-row">';
+                // Title + description column
+                html += '<div class="list-col-title">';
+                html += '<div class="list-row-title">' + escapeHtml(init.title) + '</div>';
+                if (init.description) {
+                  var desc = init.description.length >= 120 ? init.description.substring(0, 120) + '...' : init.description;
+                  html += '<div class="list-row-desc">' + escapeHtml(desc) + '</div>';
+                }
+                html += '</div>';
+
+                html += '<div class="list-col-cluster">' + clusterHtml + '</div>';
+                html += '<div class="list-col-phase"><span class="phase-badge phase-' + phaseClass + '">' + phaseName + '</span></div>';
+                html += '<div class="list-col-status"><span class="status-dot status-' + init.status + '"></span> ' + statusName + '</div>';
+                html += '<div class="list-col-metric">' + potentieHtml + '</div>';
+                html += '<div class="list-col-metric">' + risicoHtml + '</div>';
+                html += '<div class="list-col-date"><span class="meta-text">' + formatDate(init.updated_at) + '</span></div>';
+                html += '</a>';
+              });
+
+              html += '</div>';
+            } else {
+              // === CARD VIEW (standaard) ===
+              html = '<div class="cards-grid">';
+
+              data.initiatives.forEach(function(init) {
+                var phaseClass = init.status === 'gestopt' ? 'gestopt' : init.phase;
+                var phaseLabels = {idee:'Idee', verkenning:'Verkenning', experiment:'Experiment', pilot:'Pilot', opschaling:'Opschaling'};
+                var phaseName = phaseLabels[init.phase] || init.phase;
+
+                var horizonHtml = '';
+                var horizonLabels = {h1:'H1', h2:'H2', h3:'H3'};
+                if (init.horizon && horizonLabels[init.horizon]) {
+                  horizonHtml = '<span class="horizon-badge">' + horizonLabels[init.horizon] + '</span>';
+                }
+
+                var statusName = init.status.charAt(0).toUpperCase() + init.status.slice(1);
+
+                html += '<a href="' + ROUTES.initiativeDetail.replace('__ID__', init.id) + '" class="initiative-card">';
+                html += '<div class="card-header"><span class="card-title">' + escapeHtml(init.title) + '</span>';
+                html += '<span class="phase-badge phase-' + phaseClass + '">' + phaseName + '</span></div>';
+
+                if (init.description) {
+                  var desc = init.description.length >= 100 ? init.description.substring(0, 100) + '...' : init.description;
+                  html += '<p class="card-description">' + escapeHtml(desc) + '</p>';
+                }
+
+                html += '<div class="card-meta">';
+                if (horizonHtml) html += horizonHtml;
+                html += '<span class="card-meta-item"><span class="status-dot status-' + init.status + '"></span>' + statusName + '</span>';
+                html += '<span class="meta-text">' + formatDate(init.updated_at) + '</span>';
+                html += '</div></a>';
+              });
+
+              html += '</div>';
+            }
             container.innerHTML = html;
 
             var shown = data.initiatives.length;
@@ -358,6 +440,19 @@
       panel.classList.add('open');
       btn.classList.add('open');
     }
+  };
+
+  // Switch view (cards / list)
+  window.switchView = function(view) {
+    filterState.view = view;
+    localStorage.setItem('initiatives_view', view);
+
+    // Update toggle buttons
+    document.getElementById('btn-view-cards').classList.toggle('active', view === 'cards');
+    document.getElementById('btn-view-list').classList.toggle('active', view === 'list');
+
+    // Re-render with current filters
+    loadInitiatives();
   };
 
   // Reset all filters

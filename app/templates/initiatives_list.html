@@ -11,6 +11,24 @@
     <p class="page-subtitle">Alle geregistreerde innovatie-initiatieven</p>
   </div>
   <div class="header-actions">
+    <!-- View toggle: cards / list -->
+    <div class="view-toggle" id="view-toggle-group">
+      <button class="view-toggle-btn active" id="btn-view-cards" onclick="switchView('cards')" title="Tegels">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+          <rect x="3" y="3" width="7" height="7" rx="1"/>
+          <rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/>
+          <rect x="14" y="14" width="7" height="7" rx="1"/>
+        </svg>
+      </button>
+      <button class="view-toggle-btn" id="btn-view-list" onclick="switchView('list')" title="Lijst">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+    </div>
     <div class="search-bar">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
         <circle cx="11" cy="11" r="8"/>
