@@ -710,15 +710,17 @@
           <div class="form-row">
             <div class="form-field">
               <label class="form-label">Gerelateerde initiatieven</label>
-              <select name="gerelateerde_initiatieven_ids" id="edit-related-initiatives-select" class="form-select" multiple style="min-height: 100px;">
-                {% set current_related = initiative.gerelateerde_initiatieven.split(",") if initiative.gerelateerde_initiatieven else [] %}
-                {% for other in all_initiatives_for_related %}
-                {% if other.id != initiative.id %}
-                <option value="{{ other.id }}" {% if other.id in current_related %}selected{% endif %}>{{ other.title[:60] }}</option>
-                {% endif %}
-                {% endfor %}
-              </select>
-              <div class="form-hint">Houd Cmd (Mac) of Ctrl (Windows) ingedrukt om meerdere te selecteren.</div>
+              <div id="related-initiatives-selector" class="searchable-select">
+                <!-- Badges voor geselecteerde initiatieven -->
+                <div id="related-badges-container" class="selected-badges"></div>
+                <!-- Zoekinput + dropdown -->
+                <div class="search-input-wrapper">
+                  <input type="text" id="related-search-input" class="form-input" placeholder="Typ om te zoeken..." autocomplete="off">
+                  <div id="related-dropdown" class="search-dropdown" style="display:none;"></div>
+                </div>
+              </div>
+              <!-- Hidden input voor form submit -->
+              <input type="hidden" name="gerelateerde_initiatieven_ids" id="related-hidden-input">
             </div>
             <div class="form-field">
               <label class="form-label">Opmerkingen</label>
@@ -1315,7 +1317,124 @@
   // Edit modal
   function openEditModal() {
     openModal('edit-initiative');
+    // Init searchable selector for related initiatives
+    initRelatedSelector();
   }
+
+  // ===== Searchable selector voor gerelateerde initiatieven =====
+  var allInitiatives = [
+    {% for other in all_initiatives_for_related %}
+    {% if other.id != initiative.id %}
+    {id: "{{ other.id }}", title: {{ other.title[:80] | tojson }}},
+    {% endif %}
+    {% endfor %}
+  ];
+
+  var selectedRelatedIds = [];
+
+  function initRelatedSelector() {
+    // Haal huidige gerelateerde IDs op
+    selectedRelatedIds = [];
+    {% set current_related = initiative.gerelateerde_initiatieven.split(",") if initiative.gerelateerde_initiatieven else [] %}
+    {% for rel_id in current_related %}
+    selectedRelatedIds.push("{{ rel_id.strip() }}");
+    {% endfor %}
+
+    renderRelatedBadges();
+
+    var input = document.getElementById('related-search-input');
+    var dropdown = document.getElementById('related-dropdown');
+
+    if (!input || !dropdown) return;
+
+    // Search on input
+    input.addEventListener('input', function() {
+      var query = this.value.toLowerCase().trim();
+      if (query.length < 1) {
+        dropdown.style.display = 'none';
+        return;
+      }
+
+      // Filter initiatives
+      var matches = allInitiatives.filter(function(init) {
+        return init.title.toLowerCase().indexOf(query) >= 0 && selectedRelatedIds.indexOf(init.id) < 0;
+      }).slice(0, 10); // max 10 resultaten
+
+      if (matches.length === 0) {
+        dropdown.innerHTML = '<div class="dropdown-empty">Geen resultaten gevonden</div>';
+        dropdown.style.display = 'block';
+        return;
+      }
+
+      var html = '';
+      matches.forEach(function(init) {
+        var title = init.title.length > 60 ? init.title.substring(0, 60) + '...' : init.title;
+        html += '<div class="dropdown-item" data-id="' + init.id + '">' + escapeHtml(title) + '</div>';
+      });
+      dropdown.innerHTML = html;
+      dropdown.style.display = 'block';
+
+      // Click handler voor dropdown items
+      dropdown.querySelectorAll('.dropdown-item').forEach(function(item) {
+        item.addEventListener('click', function() {
+          var id = this.dataset.id;
+          if (selectedRelatedIds.indexOf(id) < 0) {
+            selectedRelatedIds.push(id);
+            renderRelatedBadges();
+            updateRelatedHiddenInput();
+          }
+          input.value = '';
+          dropdown.style.display = 'none';
+          input.focus();
+        });
+      });
+    });
+
+    // Close dropdown on outside click
+    document.addEventListener('click', function(e) {
+      if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.style.display = 'none';
+      }
+    });
+  }
+
+  function renderRelatedBadges() {
+    var container = document.getElementById('related-badges-container');
+    if (!container) return;
+
+    var html = '';
+    selectedRelatedIds.forEach(function(id) {
+      // Vind de titel
+      var init = allInitiatives.find(function(i) { return i.id === id; });
+      var label = init ? (init.title.length > 40 ? init.title.substring(0, 40) + '...' : init.title) : id;
+      html += '<span class="related-badge">' + escapeHtml(label);
+      html += '<button type="button" class="badge-remove" data-id="' + id + '" title="Verwijderen">&times;</button>';
+      html += '</span>';
+    });
+    container.innerHTML = html;
+
+    // Remove handlers
+    container.querySelectorAll('.badge-remove').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        var id = this.dataset.id;
+        selectedRelatedIds = selectedRelatedIds.filter(function(i) { return i !== id; });
+        renderRelatedBadges();
+        updateRelatedHiddenInput();
+        // Refresh dropdown zodat verwijderde initiatief weer verschijnt
+        var input = document.getElementById('related-search-input');
+        if (input) input.dispatchEvent(new Event('input'));
+      });
+    });
+  }
+
+  function updateRelatedHiddenInput() {
+    var hidden = document.getElementById('related-hidden-input');
+    if (hidden) hidden.value = selectedRelatedIds.join(',');
+  }
+
+  // Init on load
+  updateRelatedHiddenInput();
 
   document.getElementById('form-edit-initiative').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1323,7 +1442,7 @@
     const data = {};
     formData.forEach((value, key) => {
       if (key === 'horizon' && !value) return;
-      if (key !== 'tag_ids' && key !== 'gerelateerde_initiatieven_ids') data[key] = value;
+      if (key !== 'tag_ids') data[key] = value;
     });
 
     // Handle multi-select tag_ids separately
@@ -1333,11 +1452,12 @@
       data['tag_ids'] = selectedTags;
     }
 
-    // v0.2: Handle multi-select for related initiatives
-    const relatedSelect = document.getElementById('edit-related-initiatives-select');
-    if (relatedSelect) {
-      const selectedRelated = Array.from(relatedSelect.selectedOptions).map(o => o.value);
-      data['gerelateerde_initiatieven_ids'] = selectedRelated;
+    // v0.2: gerelateerde_initiatieven_ids komt uit hidden input (via searchable selector)
+    const relatedHidden = document.getElementById('related-hidden-input');
+    if (relatedHidden && relatedHidden.value) {
+      data['gerelateerde_initiatieven_ids'] = relatedHidden.value.split(',').map(s => s.trim());
+    } else {
+      data['gerelateerde_initiatieven_ids'] = [];
     }
 
     try {
@@ -2153,5 +2273,65 @@
       console.error(err);
     }
   }
+
+  // CSS voor searchable selector component
+  (function() {
+    var style = document.createElement('style');
+    style.textContent = `
+      .searchable-select {
+        border: 1px solid var(--border); border-radius: 8px;
+        padding: 8px; background: var(--surface);
+        min-height: 44px; position: relative;
+      }
+      .searchable-select:focus-within {
+        border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow);
+      }
+      .selected-badges {
+        display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px;
+      }
+      .related-badge {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 3px 8px; font-size: 12px; font-weight: 500;
+        background: var(--accent-glow); color: var(--accent);
+        border-radius: 6px; max-width: 200px;
+      }
+      .related-badge .badge-remove {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 16px; height: 16px; border: none; background: transparent;
+        color: var(--accent); cursor: pointer; font-size: 14px; line-height: 1;
+        border-radius: 50%; padding: 0; transition: background 0.15s;
+      }
+      .related-badge .badge-remove:hover {
+        background: var(--accent); color: white;
+      }
+      .search-input-wrapper {
+        position: relative;
+      }
+      .search-input-wrapper .form-input {
+        width: 100%; padding: 6px 10px; font-size: 13px;
+        background: var(--bg); border: 1px solid var(--border);
+        color: var(--fg); border-radius: 6px; font-family: inherit;
+      }
+      .search-dropdown {
+        position: absolute; top: 100%; left: 0; right: 0;
+        background: var(--surface); border: 1px solid var(--border);
+        border-radius: 8px; box-shadow: var(--shadow-md);
+        max-height: 240px; overflow-y: auto; z-index: 100;
+        margin-top: 4px;
+      }
+      .dropdown-item {
+        padding: 8px 12px; font-size: 13px; cursor: pointer;
+        border-bottom: 1px solid var(--border);
+        transition: background 0.1s;
+      }
+      .dropdown-item:last-child { border-bottom: none; }
+      .dropdown-item:hover { background: var(--bg); }
+      .dropdown-empty {
+        padding: 12px; font-size: 13px; color: var(--muted);
+        text-align: center;
+      }
+    `;
+    document.head.appendChild(style);
+  })();
 </script>
 {% endblock %}
