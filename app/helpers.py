@@ -147,6 +147,72 @@ def ai_type_label(type_val: str) -> str:
     return labels.get(type_val, type_val or "")
 
 
+# --- v0.2: Nieuwe label functies ---
+
+def cluster_label(cluster: str) -> str:
+    """Cluster-naam in korte vorm."""
+    labels = {
+        "Beheer": "Beheer",
+        "Interne Dienstverlening en Advisering": "Dienstverlening",
+        "Participatie en Maatschappelijke Ontwikkeling": "Participatie",
+        "Publiekszaken Handhaving en Veiligheid": "Publiekszaken",
+        "Stedelijke Ontwikkeling": "Stedelijke Ontw.",
+    }
+    return labels.get(cluster, cluster or "")
+
+
+def cluster_css_class(cluster: str) -> str:
+    """CSS class voor cluster badge."""
+    mapping = {
+        "Beheer": "cluster-beheer",
+        "Interne Dienstverlening en Advisering": "cluster-dienstverlening",
+        "Participatie en Maatschappelijke Ontwikkeling": "cluster-participatie",
+        "Publiekszaken Handhaving en Veiligheid": "cluster-publiekszaken",
+        "Stedelijke Ontwikkeling": "cluster-stedelijke",
+    }
+    return mapping.get(cluster, "")
+
+
+def potentie_label(val: str) -> str:
+    labels = {"hoog": "Hoog", "midden": "Midden", "onbekend": "Onbekend"}
+    return labels.get(val, val or "")
+
+
+def risico_label(val: str) -> str:
+    labels = {"hoog": "Hoog", "midden": "Midden", "laag": "Laag"}
+    return labels.get(val, val or "")
+
+
+def capaciteit_label(val: str) -> str:
+    labels = {"hoog": "Hoog", "midden": "Midden", "laag": "Laag", "onbekend": "Onbekend"}
+    return labels.get(val, val or "")
+
+
+def betrokkenheid_label(val: str) -> str:
+    labels = {
+        "actief_begeleidend": "Actief begeleidend",
+        "passief_volgend": "Passief volgend",
+        "nog_niet_betrokken": "Nog niet betrokken",
+    }
+    return labels.get(val, val or "")
+
+
+def bron_label(val: str) -> str:
+    """Bron initiatief in leesbare vorm."""
+    labels = {
+        "intern": "Intern",
+        "idee interne medewerker": "Ideë interne medewerker",
+        "intern (gok)": "Intern (gok)",
+        "andere gemeente": "Andere gemeente",
+        "externe leverancier": "Externe leverancier",
+        "externe leverancier + intern (Griffie)": "Extern + Intern",
+        "samenwerking partner": "Samenwerking partner",
+        "Functioneel beheer": "Functioneel beheer",
+        "Hersenspinsel kernteam": "Hersenspinsel kernteam",
+    }
+    return labels.get(val, val or "")
+
+
 def format_date(iso_string: str | None) -> str:
     """Formatteer een ISO-datum naar leesbaar Nederlands."""
     if not iso_string:
@@ -274,6 +340,15 @@ templates.env.globals["formatDate"] = format_date
 templates.env.globals["formatFileSize"] = format_file_size
 templates.env.globals["renderMarkdown"] = render_markdown
 
+# v0.2: nieuwe helpers
+templates.env.globals["clusterLabel"] = cluster_label
+templates.env.globals["clusterCssClass"] = cluster_css_class
+templates.env.globals["potentieLabel"] = potentie_label
+templates.env.globals["risicoLabel"] = risico_label
+templates.env.globals["capaciteitLabel"] = capaciteit_label
+templates.env.globals["betrokkenheidLabel"] = betrokkenheid_label
+templates.env.globals["bronLabel"] = bron_label
+
 
 def render_template(template_name: str, request, **context):
     """Render een Jinja2 template met standaard context.
@@ -282,8 +357,13 @@ def render_template(template_name: str, request, **context):
     """
     ctx = {
         "phases": ["idee", "verkenning", "experiment", "pilot", "opschaling"],
-        "statuses": ["actief", "gestopt", "afgerond"],
+        "statuses": ["actief", "gestopt", "afgerond", "onduidelijk", "pauze", "idee"],
         "horizons": ["h1", "h2", "h3"],
+        # v0.2: nieuwe opties voor dropdowns
+        "potenties": ["hoog", "midden", "onbekend"],
+        "capaciteitsvragen": ["hoog", "midden", "laag", "onbekend"],
+        "risico_levels": ["hoog", "midden", "laag"],
+        "betrokkenheid_iv_levels": ["actief_begeleidend", "passief_volgend", "nog_niet_betrokken"],
         **context,
     }
     return templates.TemplateResponse(

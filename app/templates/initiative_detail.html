@@ -56,16 +56,38 @@
         <div class="detail-label">Fase & Status</div>
         <div style="display: flex; gap: 8px; margin-top: 4px;">
           <span class="phase-badge phase-{{ 'gestopt' if initiative.status == 'gestopt' else initiative.phase }}">{{ phaseLabel(initiative.phase) }}</span>
+          <span class="phase-badge" style="background:var(--bg);color:var(--muted);">{{ statusLabel(initiative.status) }}</span>
           {% if initiative.horizon %}
           <span class="horizon-badge">{{ horizonLabel(initiative.horizon) }}</span>
           {% endif %}
         </div>
       </div>
 
+      {% if initiative.cluster %}
+      <div class="detail-field">
+        <div class="detail-label">Cluster</div>
+        <span class="cluster-badge {{ clusterCssClass(initiative.cluster) }}">{{ clusterLabel(initiative.cluster) }}</span>
+      </div>
+      {% endif %}
+
       {% if initiative.trekker %}
       <div class="detail-field">
         <div class="detail-label">Trekker</div>
         <div class="detail-value">{{ initiative.trekker }}</div>
+      </div>
+      {% endif %}
+
+      {% if initiative.afdeling %}
+      <div class="detail-field">
+        <div class="detail-label">Afdeling</div>
+        <div class="detail-value">{{ initiative.afdeling }}</div>
+      </div>
+      {% endif %}
+
+      {% if initiative.team %}
+      <div class="detail-field">
+        <div class="detail-label">Team</div>
+        <div class="detail-value">{{ initiative.team }}</div>
       </div>
       {% endif %}
 
@@ -79,7 +101,7 @@
       {% if initiative.type_ai_gebruik %}
       <div class="detail-field">
         <div class="detail-label">Type AI-gebruik</div>
-        <span class="type-ai-badge type-ai-{{ initiative.type_ai_gebruik }}">{{ initiative.type_ai_gebruik }}</span>
+        <span class="type-ai-badge type-ai-{{ initiative.type_ai_gebruik }}">{{ aiTypeLabel(initiative.type_ai_gebruik) }}</span>
       </div>
       {% endif %}
 
@@ -96,6 +118,66 @@
         {% else %}
         <div class="detail-value">{{ initiative.mds }}</div>
         {% endif %}
+      </div>
+      {% endif %}
+
+      <!-- v0.2: Beleidsmatrix (Potentie / Risico / Capaciteitsvraag) -->
+      {% if initiative.potentie or initiative.risico or initiative.capaciteitsvraag %}
+      <div class="detail-field">
+        <div class="detail-label">Beleidsmatrix</div>
+        <div class="beleids-matrix">
+          <div class="beleids-matrix-item">
+            <div class="beleids-matrix-label">Potentie</div>
+            <div class="beleids-matrix-value">
+              {% if initiative.potentie %}
+              <span class="metric-badge metric-{{ initiative.potentie }}">{{ potentieLabel(initiative.potentie) }}</span>
+              {% else %}<span style="color:var(--muted);font-size:12px;">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="beleids-matrix-item">
+            <div class="beleids-matrix-label">Risico</div>
+            <div class="beleids-matrix-value">
+              {% if initiative.risico %}
+              <span class="metric-badge risico-{{ initiative.risico }}">{{ risicoLabel(initiative.risico) }}</span>
+              {% else %}<span style="color:var(--muted);font-size:12px;">—</span>{% endif %}
+            </div>
+          </div>
+          <div class="beleids-matrix-item">
+            <div class="beleids-matrix-label">Capaciteit</div>
+            <div class="beleids-matrix-value">
+              {% if initiative.capaciteitsvraag %}
+              <span class="metric-badge metric-{{ initiative.capaciteitsvraag }}">{{ capaciteitLabel(initiative.capaciteitsvraag) }}</span>
+              {% else %}<span style="color:var(--muted);font-size:12px;">—</span>{% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- v0.2: Governance -->
+      {% if initiative.bron_initiatief or initiative.externe_partners or initiative.betrokkenheid_iv %}
+      <div class="detail-field">
+        <div class="detail-label">Governance</div>
+        <div class="governance-grid">
+          {% if initiative.bron_initiatief %}
+          <div>
+            <div class="governance-item-label">Bron</div>
+            <div style="font-size:13px;">{{ bronLabel(initiative.bron_initiatief) }}</div>
+          </div>
+          {% endif %}
+          {% if initiative.externe_partners %}
+          <div>
+            <div class="governance-item-label">Externe partners</div>
+            <div style="font-size:13px;">{{ initiative.externe_partners }}</div>
+          </div>
+          {% endif %}
+          {% if initiative.betrokkenheid_iv %}
+          <div style="grid-column: 1/-1;">
+            <div class="governance-item-label">Betrokkenheid IV</div>
+            <span class="betrokkenheid-badge betrokkenheid-{{ initiative.betrokkenheid_iv }}">{{ betrokkenheidLabel(initiative.betrokkenheid_iv) }}</span>
+          </div>
+          {% endif %}
+        </div>
       </div>
       {% endif %}
 
@@ -170,6 +252,32 @@
       <div style="margin-top: 20px; padding: 16px; background: var(--stopped-subtle); border-left: 3px solid var(--stopped);">
         <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--stopped); margin-bottom: 8px;">Leeruitkomst</div>
         <div style="font-size: 13px; line-height: 1.5;">{{ initiative.stop_reason }}</div>
+      </div>
+      {% endif %}
+
+      <!-- v0.2: Volgende stap -->
+      {% if initiative.volgende_stap %}
+      <div style="margin-top: 20px;">
+        <div class="volgende-stap-card">
+          <div class="volgende-stap-label">Volgende stap</div>
+          <div>{{ initiative.volgende_stap }}</div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- v0.2: Opmerkingen -->
+      {% if initiative.opmerkingen %}
+      <details style="margin-top: 16px; font-size: 13px;">
+        <summary style="cursor: pointer; color: var(--muted); font-size: 12px; font-weight: 500;">Opmerkingen</summary>
+        <div style="margin-top: 8px; line-height: 1.5; color: var(--fg);">{{ initiative.opmerkingen }}</div>
+      </details>
+      {% endif %}
+
+      <!-- v0.2: Gerelateerde initiatieven -->
+      {% if initiative.gerelateerde_initiatieven %}
+      <div style="margin-top: 16px;">
+        <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-bottom: 4px;">Gerelateerde initiatieven</div>
+        <div style="font-size: 13px; color: var(--fg);">{{ initiative.gerelateerde_initiatieven }}</div>
       </div>
       {% endif %}
     </div>
@@ -471,6 +579,129 @@
             {% endfor %}
           </select>
         </div>
+
+        <!-- v0.2: Context & Governance sectie -->
+        <fieldset style="border:1px solid var(--border);border-radius:8px;padding:12px 14px 6px;margin:12px 0 0;">
+          <legend style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);padding:0 6px;">Context & Governance</legend>
+
+          <div class="form-row">
+            <div class="form-field">
+              <label class="form-label">Cluster</label>
+              <select name="cluster" class="form-select">
+                <option value="">Selecteer cluster</option>
+                {% set clusters = [
+                  ('Beheer', 'Beheer'),
+                  ('Interne Dienstverlening en Advisering', 'Dienstverlening & Adv.'),
+                  ('Participatie en Maatschappelijke Ontwikkeling', 'Participatie & Maatsch. Ontw.'),
+                  ('Publiekszaken Handhaving en Veiligheid', 'Publiekszaken & Veiligheid'),
+                  ('Stedelijke Ontwikkeling', 'Stedelijke Ontwikkeling'),
+                ] %}
+                {% for val, label in clusters %}
+                <option value="{{ val }}" {% if initiative.cluster == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-field">
+              <label class="form-label">Afdeling</label>
+              <input type="text" name="afdeling" class="form-input" value="{{ initiative.afdeling or '' }}">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-field">
+              <label class="form-label">Team</label>
+              <input type="text" name="team" class="form-input" value="{{ initiative.team or '' }}">
+            </div>
+            <div class="form-field">
+              <label class="form-label">Bron initiatief</label>
+              <select name="bron_initiatief" class="form-select">
+                <option value="">Selecteer bron</option>
+                {% set brons = [
+                  'intern', 'idee interne medewerker', 'intern (gok)',
+                  'andere gemeente', 'externe leverancier', 'samenwerking partner',
+                  'Functioneel beheer', 'Hersenspinsel kernteam',
+                ] %}
+                {% for b in brons %}
+                <option value="{{ b }}" {% if initiative.bron_initiatief == b %}selected{% endif %}>{{ bronLabel(b) }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label class="form-label">Externe partners</label>
+            <input type="text" name="externe_partners" class="form-input" value="{{ initiative.externe_partners or '' }}">
+          </div>
+
+          <div class="form-row">
+            <div class="form-field">
+              <label class="form-label">Betrokkenheid IV</label>
+              <select name="betrokkenheid_iv" class="form-select">
+                <option value="">Selecteer betrokkenheid</option>
+                {% for b in betrokkenheid_iv_levels %}
+                <option value="{{ b }}" {% if initiative.betrokkenheid_iv == b %}selected{% endif %}>{{ betrokkenheidLabel(b) }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- v0.2: Beleidsmatrix sectie -->
+        <fieldset style="border:1px solid var(--border);border-radius:8px;padding:12px 14px 6px;margin:12px 0 0;">
+          <legend style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);padding:0 6px;">Beleidsmatrix</legend>
+
+          <div class="form-row">
+            <div class="form-field">
+              <label class="form-label">Potentie</label>
+              <select name="potentie" class="form-select">
+                <option value="">Selecteer potentie</option>
+                {% for p in potenties %}
+                <option value="{{ p }}" {% if initiative.potentie == p %}selected{% endif %}>{{ potentieLabel(p) }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-field">
+              <label class="form-label">Risico</label>
+              <select name="risico" class="form-select">
+                <option value="">Selecteer risico</option>
+                {% for r in risico_levels %}
+                <option value="{{ r }}" {% if initiative.risico == r %}selected{% endif %}>{{ risicoLabel(r) }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-field">
+              <label class="form-label">Capaciteitsvraag</label>
+              <select name="capaciteitsvraag" class="form-select">
+                <option value="">Selecteer capaciteit</option>
+                {% for c in capaciteitsvragen %}
+                <option value="{{ c }}" {% if initiative.capaciteitsvraag == c %}selected{% endif %}>{{ capaciteitLabel(c) }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- v0.2: Actie & Notities sectie -->
+        <fieldset style="border:1px solid var(--border);border-radius:8px;padding:12px 14px 6px;margin:12px 0 0;">
+          <legend style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);padding:0 6px;">Actie & Notities</legend>
+
+          <div class="form-field">
+            <label class="form-label">Volgende stap</label>
+            <textarea name="volgende_stap" class="form-textarea" style="min-height:60px;" placeholder="Wat is de volgende stap?">{{ initiative.volgende_stap or '' }}</textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="form-field">
+              <label class="form-label">Gerelateerde initiatieven</label>
+              <input type="text" name="gerelateerde_initiatieven" class="form-input" value="{{ initiative.gerelateerde_initiatieven or '' }}" placeholder="Bijv. B-03, D-05">
+            </div>
+            <div class="form-field">
+              <label class="form-label">Opmerkingen</label>
+              <input type="text" name="opmerkingen" class="form-input" value="{{ initiative.opmerkingen or '' }}" placeholder="Algemene opmerkingen">
+            </div>
+          </div>
+        </fieldset>
+
         <div class="form-field">
           <label class="form-label">Tags</label>
           <select name="tag_ids" id="edit-tag-select" class="form-select" multiple style="min-height: 100px;">

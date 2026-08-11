@@ -9,7 +9,11 @@ from pydantic import BaseModel, Field, field_validator
 # --- Enums als Literals voor validatie ---
 
 InitiativePhase = Literal["idee", "verkenning", "experiment", "pilot", "opschaling"]
-InitiativeStatus = Literal["actief", "gestopt", "afgerond"]
+InitiativeStatus = Literal["actief", "gestopt", "afgerond", "onduidelijk", "pauze", "idee"]
+Potentie = Literal["hoog", "midden", "onbekend"]
+Capaciteitsvraag = Literal["hoog", "midden", "laag", "onbekend"]
+Risico = Literal["hoog", "midden", "laag"]
+BetrokkenheidIV = Literal["actief_begeleidend", "passief_volgend", "nog_niet_betrokken"]
 Horizon = Literal["h1", "h2", "h3"]
 TypeAiGebruik = Literal[
     "bouwen_met_ai",
@@ -37,6 +41,19 @@ class InitiativeCreate(BaseModel):
     trekker: Optional[str] = None
     owner: Optional[str] = None
     type_ai_gebruik: Optional[TypeAiGebruik] = None
+    # v0.2: nieuwe velden
+    cluster: Optional[str] = None
+    afdeling: Optional[str] = None
+    team: Optional[str] = None
+    potentie: Optional[Potentie] = None
+    capaciteitsvraag: Optional[Capaciteitsvraag] = None
+    risico: Optional[Risico] = None
+    bron_initiatief: Optional[str] = None
+    externe_partners: Optional[str] = None
+    betrokkenheid_iv: Optional[BetrokkenheidIV] = None
+    gerelateerde_initiatieven: Optional[str] = None
+    volgende_stap: Optional[str] = None
+    opmerkingen: Optional[str] = None
 
 
 class InitiativeUpdate(BaseModel):
@@ -54,6 +71,19 @@ class InitiativeUpdate(BaseModel):
     owner: Optional[str] = None
     type_ai_gebruik: Optional[TypeAiGebruik] = None
     stop_reason: Optional[str] = None
+    # v0.2: nieuwe velden
+    cluster: Optional[str] = None
+    afdeling: Optional[str] = None
+    team: Optional[str] = None
+    potentie: Optional[Potentie] = None
+    capaciteitsvraag: Optional[Capaciteitsvraag] = None
+    risico: Optional[Risico] = None
+    bron_initiatief: Optional[str] = None
+    externe_partners: Optional[str] = None
+    betrokkenheid_iv: Optional[BetrokkenheidIV] = None
+    gerelateerde_initiatieven: Optional[str] = None
+    volgende_stap: Optional[str] = None
+    opmerkingen: Optional[str] = None
 
 
 class InitiativeStop(BaseModel):

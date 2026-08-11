@@ -31,7 +31,7 @@ class Initiative(Base):
         default="idee",
     )
     status = Column(
-        Enum("actief", "gestopt", "afgerond", name="initiative_status"),
+        Enum("actief", "gestopt", "afgerond", "onduidelijk", "pauze", "idee", name="initiative_status"),
         nullable=False,
         default="actief",
     )
@@ -58,6 +58,21 @@ class Initiative(Base):
         nullable=True,
     )  # type AI-inzet
     stop_reason = Column(Text, nullable=True)  # verplicht als status = gestopt
+
+    # --- v0.2: nieuwe velden uit Excel inventarisatie ---
+    cluster = Column(Text, nullable=True)  # Beheer, Dienstverlening, etc.
+    afdeling = Column(Text, nullable=True)
+    team = Column(Text, nullable=True)
+    potentie = Column(Text, nullable=True)  # hoog, midden, onbekend
+    capaciteitsvraag = Column(Text, nullable=True)  # hoog, midden, laag, onbekend
+    risico = Column(Text, nullable=True)  # hoog, midden, laag
+    bron_initiatief = Column(Text, nullable=True)  # intern, andere gemeente, etc.
+    externe_partners = Column(Text, nullable=True)
+    betrokkenheid_iv = Column(Text, nullable=True)  # actief_begeleidend, passief_volgend, nog_niet_betrokken
+    gerelateerde_initiatieven = Column(Text, nullable=True)
+    volgende_stap = Column(Text, nullable=True)
+    opmerkingen = Column(Text, nullable=True)
+
     created_at = Column(DateTime, default=func.now(), nullable=False)
     updated_at = Column(
         DateTime, default=func.now(), onupdate=func.now(), nullable=False

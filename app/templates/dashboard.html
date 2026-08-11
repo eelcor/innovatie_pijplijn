@@ -85,9 +85,11 @@
   <thead>
     <tr>
       <th>Initiatief</th>
+      <th>Cluster</th>
       <th>Fase</th>
       <th>Status</th>
-      <th>Horizon</th>
+      <th>Potentie</th>
+      <th>Risico</th>
       <th>Ingevoerd</th>
     </tr>
   </thead>
@@ -100,9 +102,11 @@
         <div class="initiative-desc">{{ initiative.description[:80] }}{% if initiative.description|length > 80 %}...{% endif %}</div>
         {% endif %}
       </td>
+      <td>{% if initiative.cluster %}<span class="cluster-badge {{ clusterCssClass(initiative.cluster) }}">{{ clusterLabel(initiative.cluster) }}</span>{% else %}<span class="meta-text">-</span>{% endif %}</td>
       <td><span class="phase-badge phase-{{ 'gestopt' if initiative.status == 'gestopt' else initiative.phase }}">{{ phaseLabel(initiative.phase) }}</span></td>
       <td><span class="status-dot status-{{ initiative.status }}"></span></td>
-      <td>{% if initiative.horizon %}<span class="horizon-badge">{{ horizonLabel(initiative.horizon) }}</span>{% else %}<span class="meta-text">-</span>{% endif %}</td>
+      <td>{% if initiative.potentie %}<span class="metric-badge metric-{{ initiative.potentie }}">{{ potentieLabel(initiative.potentie) }}</span>{% else %}<span class="meta-text">-</span>{% endif %}</td>
+      <td>{% if initiative.risico %}<span class="metric-badge risico-{{ initiative.risico }}">{{ risicoLabel(initiative.risico) }}</span>{% else %}<span class="meta-text">-</span>{% endif %}</td>
       <td><span class="meta-text">{{ formatDate(initiative.created_at.isoformat() if initiative.created_at else None) }}</span></td>
     </tr>
     {% endfor %}
@@ -138,6 +142,9 @@
         <span class="card-title">{{ item.title }}</span>
         <span class="phase-badge phase-gestopt">Gestopt</span>
       </div>
+      {% if item.cluster %}
+      <div style="margin-bottom:8px;"><span class="cluster-badge {{ clusterCssClass(item.cluster) }}">{{ clusterLabel(item.cluster) }}</span></div>
+      {% endif %}
       {% if item.stop_reason %}
       <p class="card-description">{{ item.stop_reason[:120] }}{% if item.stop_reason|length > 120 %}...{% endif %}</p>
       {% endif %}

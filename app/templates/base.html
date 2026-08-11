@@ -48,6 +48,50 @@
       --growth: oklch(58% 0.12 160);
       --compliance: oklch(64% 0.12 72);
 
+      /* v0.2: Cluster badges (subtiel, per domein) */
+      --cluster-beheer: oklch(58% 0.10 260);
+      --cluster-beheer-subtle: oklch(94% 0.02 260);
+      --cluster-dienstverlening: oklch(58% 0.12 160);
+      --cluster-dienstverlening-subtle: oklch(94% 0.02 160);
+      --cluster-participatie: oklch(58% 0.12 72);
+      --cluster-participatie-subtle: oklch(95% 0.02 72);
+      --cluster-publiekszaken: oklch(56% 0.14 310);
+      --cluster-publiekszaken-subtle: oklch(95% 0.02 310);
+      --cluster-stedelijke: oklch(58% 0.14 290);
+      --cluster-stedelijke-subtle: oklch(94% 0.02 290);
+
+      /* v0.2: Potentie badges */
+      --potentie-hoog: oklch(56% 0.11 155);
+      --potentie-hoog-subtle: oklch(94% 0.02 155);
+      --potentie-midden: oklch(64% 0.12 72);
+      --potentie-midden-subtle: oklch(96% 0.02 72);
+      --potentie-onbekend: oklch(60% 0.03 280);
+      --potentie-onbekend-subtle: oklch(95% 0.01 280);
+
+      /* v0.2: Risico badges */
+      --risico-hoog: oklch(56% 0.14 310);
+      --risico-hoog-subtle: oklch(95% 0.02 310);
+      --risico-midden: oklch(64% 0.12 72);
+      --risico-midden-subtle: oklch(96% 0.02 72);
+      --risico-laag: oklch(56% 0.11 155);
+      --risico-laag-subtle: oklch(94% 0.02 155);
+
+      /* v0.2: Capaciteitsvraag badges */
+      --capaciteit-hoog: oklch(56% 0.14 310);
+      --capaciteit-hoog-subtle: oklch(95% 0.02 310);
+      --capaciteit-midden: oklch(64% 0.12 72);
+      --capaciteit-midden-subtle: oklch(96% 0.02 72);
+      --capaciteit-laag: oklch(56% 0.11 155);
+      --capaciteit-laag-subtle: oklch(94% 0.02 155);
+
+      /* v0.2: Betrokkenheid IV badges */
+      --betrokkenheid-actief: oklch(56% 0.11 155);
+      --betrokkenheid-actief-subtle: oklch(94% 0.02 155);
+      --betrokkenheid-passief: oklch(60% 0.03 280);
+      --betrokkenheid-passief-subtle: oklch(95% 0.01 280);
+      --betrokkenheid-nog-niet: oklch(64% 0.12 72);
+      --betrokkenheid-nog-niet-subtle: oklch(96% 0.02 72);
+
       /* Shadows */
       --shadow-sm: 0 1px 3px oklch(0% 0 0 / 0.04);
       --shadow-md: 0 4px 16px oklch(0% 0 0 / 0.07);
@@ -520,6 +564,81 @@
     .type-ai-ai_in_bestaande_tools { color: var(--compliance); background: var(--warning-subtle); }
     .type-ai-persoonlijke_productiviteit { color: var(--experiment); background: var(--experiment-subtle); }
     .type-ai-mix { color: var(--stopped); background: var(--stopped-subtle); }
+
+    /* v0.2: Cluster badges */
+    .cluster-badge {
+      display: inline-flex; align-items: center; padding: 3px 9px;
+      font-size: 10.5px; font-weight: 600; letter-spacing: 0.02em;
+      border-radius: 6px; line-height: 1.3;
+    }
+    .cluster-beheer { color: var(--cluster-beheer); background: var(--cluster-beheer-subtle); }
+    .cluster-dienstverlening { color: var(--cluster-dienstverlening); background: var(--cluster-dienstverlening-subtle); }
+    .cluster-participatie { color: var(--cluster-participatie); background: var(--cluster-participatie-subtle); }
+    .cluster-publiekszaken { color: var(--cluster-publiekszaken); background: var(--cluster-publiekszaken-subtle); }
+    .cluster-stedelijke { color: var(--cluster-stedelijke); background: var(--cluster-stedelijke-subtle); }
+
+    /* v0.2: Potentie / Risico / Capaciteit badges (unified metric-badge style) */
+    .metric-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 9px; font-size: 10.5px; font-weight: 600;
+      border-radius: 6px; line-height: 1.3;
+    }
+    .metric-hoog { color: var(--potentie-hoog); background: var(--potentie-hoog-subtle); }
+    .metric-midden { color: var(--potentie-midden); background: var(--potentie-midden-subtle); }
+    .metric-onbekend { color: var(--potentie-onbekend); background: var(--potentie-onbekend-subtle); }
+    .metric-laag { color: var(--risico-laag); background: var(--risico-laag-subtle); }
+
+    /* v0.2: Risico badges (gebruikt andere kleuren: hoog=rood) */
+    .risico-hoog { color: var(--risico-hoog); background: var(--risico-hoog-subtle); }
+    .risico-midden { color: var(--risico-midden); background: var(--risico-midden-subtle); }
+    .risico-laag { color: var(--risico-laag); background: var(--risico-laag-subtle); }
+
+    /* v0.2: Betrokkenheid IV badges */
+    .betrokkenheid-badge {
+      display: inline-flex; align-items: center; padding: 3px 9px;
+      font-size: 10.5px; font-weight: 600; border-radius: 6px; line-height: 1.3;
+    }
+    .betrokkenheid-actief_begeleidend { color: var(--betrokkenheid-actief); background: var(--betrokkenheid-actief-subtle); }
+    .betrokkenheid-passief_volgend { color: var(--betrokkenheid-passief); background: var(--betrokkenheid-passief-subtle); }
+    .betrokkenheid-nog_niet_betrokken { color: var(--betrokkenheid-nog-niet); background: var(--betrokkenheid-nog-niet-subtle); }
+
+    /* v0.2: Beleidsmatrix card */
+    .beleids-matrix {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+      padding: 16px; background: var(--bg); border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+    .beleids-matrix-item {
+      text-align: center; padding: 12px 8px;
+      background: var(--surface); border-radius: 8px;
+    }
+    .beleids-matrix-label {
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--muted); margin-bottom: 6px;
+    }
+    .beleids-matrix-value {
+      font-size: 13px; font-weight: 600;
+    }
+
+    /* v0.2: Volgende stap card */
+    .volgende-stap-card {
+      padding: 14px 16px; background: var(--accent-glow);
+      border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0;
+      font-size: 13px; line-height: 1.5;
+    }
+    .volgende-stap-label {
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--accent); margin-bottom: 4px;
+    }
+
+    /* v0.2: Governance sectie */
+    .governance-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px;
+    }
+    .governance-item-label {
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.04em; color: var(--muted); margin-bottom: 2px;
+    }
 
     .meta-text { font-size: 12.5px; color: var(--muted); }
 
