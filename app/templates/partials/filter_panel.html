@@ -338,6 +338,8 @@
                   var cc = clusterClassMap[init.cluster] || '';
                   var cl = clusterLabels[init.cluster] || init.cluster;
                   clusterHtml = '<span class="cluster-badge ' + cc + '">' + escapeHtml(cl) + '</span>';
+                } else {
+                  clusterHtml = '<span style="color:var(--muted);font-size:12px;">—</span>';
                 }
 
                 // Potentie badge
@@ -345,6 +347,8 @@
                 if (init.potentie) {
                   var pLabels = {hoog:'Hoog', midden:'Midden', onbekend:'Onbekend'};
                   potentieHtml = '<span class="metric-badge metric-' + init.potentie + '">' + (pLabels[init.potentie] || init.potentie) + '</span>';
+                } else {
+                  potentieHtml = '<span style="color:var(--muted);font-size:12px;">—</span>';
                 }
 
                 // Risico badge
@@ -352,6 +356,8 @@
                 if (init.risico) {
                   var rLabels = {hoog:'Hoog', midden:'Midden', laag:'Laag'};
                   risicoHtml = '<span class="metric-badge risico-' + init.risico + '">' + (rLabels[init.risico] || init.risico) + '</span>';
+                } else {
+                  risicoHtml = '<span style="color:var(--muted);font-size:12px;">—</span>';
                 }
 
                 html += '<a href="' + ROUTES.initiativeDetail.replace('__ID__', init.id) + '" class="list-row">';

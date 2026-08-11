@@ -121,8 +121,7 @@
       </div>
       {% endif %}
 
-      <!-- v0.2: Beleidsmatrix (Potentie / Risico / Capaciteitsvraag) -->
-      {% if initiative.potentie or initiative.risico or initiative.capaciteitsvraag %}
+      <!-- v0.2: Beleidsmatrix (Potentie / Risico / Capaciteitsvraag) — altijd zichtbaar -->
       <div class="detail-field">
         <div class="detail-label">Beleidsmatrix</div>
         <div class="beleids-matrix">
@@ -152,7 +151,6 @@
           </div>
         </div>
       </div>
-      {% endif %}
 
       <!-- v0.2: Governance -->
       {% if initiative.bron_initiatief or initiative.externe_partners or initiative.betrokkenheid_iv %}
