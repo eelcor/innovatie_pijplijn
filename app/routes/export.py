@@ -129,8 +129,12 @@ async def export_to_excel(
 
     # Headers
     headers = [
-        "Titel", "Fase", "Status", "Horizon", "MDS", "Eigenaar / team",
-        "Trekker", "Centrale vragen", "Tags", "Beschrijving"
+        "Titel", "Fase", "Status", "Horizon", "Cluster", "Afdeling", "Team",
+        "Potentie", "Risico", "Capaciteitsvraag", "Type AI-gebruik",
+        "Trekker", "Eigenaar / team", "MDS", "Bron initiatief",
+        "Externe partners", "Betrokkenheid IV", "Volgende stap",
+        "Centrale vragen", "Tags", "Gerelateerde initiatieven",
+        "Opmerkingen", "Beschrijving"
     ]
     ws_init.append(headers)
 
@@ -143,11 +147,24 @@ async def export_to_excel(
             init.phase,
             init.status,
             init.horizon or "",
-            init.mds or "",
-            init.owner or "",
+            init.cluster or "",
+            init.afdeling or "",
+            init.team or "",
+            init.potentie or "",
+            init.risico or "",
+            init.capaciteitsvraag or "",
+            init.type_ai_gebruik or "",
             init.trekker or "",
+            init.owner or "",
+            init.mds or "",
+            init.bron_initiatief or "",
+            init.externe_partners or "",
+            init.betrokkenheid_iv or "",
+            init.volgende_stap or "",
             "; ".join(questions),
             "; ".join(tags),
+            init.gerelateerde_initiatieven or "",
+            init.opmerkingen or "",
             init.description or "",
         ])
 
