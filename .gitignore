@@ -43,3 +43,9 @@ Thumbs.db
 # Input data (containt gevoelige/initiatief data)
 20260806 Input/
 *.xlsx
+
+# Agent-traces (kunnen gevoelige inhoud bevatten)
+.fastcontext/
+
+# Inventarisatie-documenten met echte Leidse initiatief-data
+Inventarisatie_AI_initiatieven*.md
