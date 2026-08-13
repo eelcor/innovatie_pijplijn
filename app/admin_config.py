@@ -4,6 +4,15 @@ Opslag van aanpasbare instellingen in een JSON-bestand zodat admin
 instellingen kan wijzigen zonder environment variabelen te herstarten.
 
 Bestand: data/admin_config.json
+
+Configuratie-voorrang (van hoog naar laag):
+  1. admin_config.json  — wordt bij startup geladen, overschrijft .env waarden
+  2. .env / env vars    — APP_BASE_URL, AI_ENABLED, MODEL_URL, etc.
+  3. hardcoded defaults — fallback als niets anders is ingesteld
+
+Dit betekent dat een admin die via het beheerpaneel de AI-config wijzigt,
+dit direct effect heeft én het overleeft bij herstart — tenzij de .env
+terug wordt gezet EN admin_config.json wordt gewist.
 """
 
 import json

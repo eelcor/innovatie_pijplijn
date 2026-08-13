@@ -847,7 +847,7 @@ async function exportExcelFromAdmin() {
   btn.textContent = 'Bezig...';
 
   try {
-    const response = await fetch('/api/export/excel', {
+    const response = await fetch(apiPath('/api/export/excel'), {
       credentials: 'same-origin',
       headers: { 'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
     });

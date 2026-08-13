@@ -110,7 +110,7 @@
         </svg>
       </div>
       <div class="dossier-info">
-        <div class="dossier-name"><a href="/api/vragen/{{ question.id }}/files/download/{{ f.id }}" style="color: var(--fg); text-decoration: none;">{{ f.filename }}</a></div>
+        <div class="dossier-name"><a href="{{ url_for('question_file_download', question_id=question.id, file_id=f.id) }}" style="color: var(--fg); text-decoration: none;">{{ f.filename }}</a></div>
         <div class="dossier-meta">{{ formatFileSize(f.file_size) }} • {{ formatDate(f.uploaded_at.isoformat() if f.uploaded_at else None) }}</div>
       </div>
       <button onclick="removeFile('{{ f.id }}')" style="background: none; border: none; cursor: pointer; color: var(--muted); padding: 4px;">
@@ -250,7 +250,7 @@ document.getElementById('form-upload-file').addEventListener('submit', async (e)
   const formData = new FormData(e.target);
 
   try {
-    await fetch('/api/vragen/' + questionId + '/files/upload', {
+    await fetch(apiPath('/api/vragen/') + questionId + '/files/upload', {
       method: 'POST',
       body: formData,
     });

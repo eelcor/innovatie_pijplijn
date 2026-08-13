@@ -7,7 +7,7 @@ class TestInitiativeCreate:
     """Test initiatief aanmaken — F1."""
 
     async def test_create_minimal(self, test_client):
-        """Aanmaken met alleen titel moet werken (fase default verkenning)."""
+        """Aanmaken met alleen titel moet werken (fase default idee)."""
         response = await test_client.post(
             "/api/initiatieven/create",
             json={"title": "Minimal initiatief"},
@@ -16,7 +16,7 @@ class TestInitiativeCreate:
         data = response.json()
         assert data["id"] is not None
         assert data["title"] == "Minimal initiatief"
-        assert data["phase"] == "verkenning"
+        assert data["phase"] == "idee"
 
     async def test_create_requires_title(self, test_client):
         """Aanmaken zonder titel moet 422 geven."""

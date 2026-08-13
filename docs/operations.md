@@ -86,10 +86,18 @@ Versie 0.2 voegt 12 nieuwe kolommen toe aan de `initiatives` tabel:
 
 ### Migratie uitvoeren
 
-Bij een upgrade van v0.1 naar v0.2:
+Database-migraties worden **automatisch** uitgevoerd bij elke startup via Alembic.
+Bestaande databases worden geadopteerd en opgewaardeerd zonder dataverlies.
+
 ```bash
-# Optioneel: handmatige migratie (meestal automatisch bij Docker rebuild)
-docker compose exec innovatiepijplijn python3 /app/scripts/migrate_v02.py
+# Migratiestatus bekijken
+docker compose exec innovatiepijplijn alembic current
+
+# Handmatige migratie (indien nodig)
+docker compose exec innovatiepijplijn alembic upgrade head
+
+# Migratiegeschiedenis bekijken
+docker compose exec innovatiepijplijn alembic history
 ```
 
 ### Excel import
@@ -316,7 +324,12 @@ curl http://localhost:8000/health
 
 ### Database schema wijzigingen
 
-Het systeem gebruikt `create_all()` voor automatische tabel-creatie. Voor expliciete migraties kan Alembic worden toegevoegd bij toekomstige versies.
+Het systeem gebruikt **Alembic** voor database-migraties. Alle schema-wijzigingen worden gecontroleerd en automatisch toegepast bij startup.
+Nieuwe migraties toevoegen:
+```bash
+docker compose exec innovatiepijplijn alembic revision -m "beschrijving wijziging"
+# Handmatig de upgrade()/downgrade() functies invullen in het nieuwe bestand
+```
 
 ---
 

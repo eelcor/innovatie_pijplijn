@@ -1,19 +1,47 @@
-"""Shared helpers voor templates."""
+"""Shared helpers voor templates.
+
+Ondersteunt reverse-proxy / subpad-deployments via APP_BASE_URL.
+Bijv. APP_BASE_URL=http://example.com/innovatiepijplijn zorgt dat alle
+generieke URL's het /innovatiepijplijn prefix krijgen.
+"""
 
 import html
 import os
 import re
 from datetime import datetime, timedelta
+from urllib.parse import urlparse
 
 from fastapi.templating import Jinja2Templates
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# --- Configuratie: basis-URL van de applicatie ---
+# --- Configuratie: basis-URL en basis-pad van de applicatie ---
 
 def get_base_url() -> str:
     """Haal de basis-URL op uit APP_BASE_URL of val terug op standaard."""
     return os.environ.get("APP_BASE_URL", "http://localhost:8000")
+
+
+def get_base_path() -> str:
+    """Haal het basis-pad op voor reverse-proxy / subpad support.
+
+    Eerst APP_BASE_URL env var, dan FastAPI root_path, anders '/'.
+    Retourneert bijv. '/innovatiepijplijn' of '/'.
+    """
+    # 1. Check APP_BASE_URL
+    base_url = get_base_url()
+    parsed = urlparse(base_url)
+    path = parsed.path.rstrip('/')
+    if path:
+        return path
+
+    # 2. Fallback op FastAPI root_path (wordt door sommige reverse proxies gezet)
+    #    We kunnen dit niet hier direct ophalen, dus gebruiken we een env fallback
+    root_path = os.environ.get("APP_ROOT_PATH", "").rstrip('/')
+    if root_path:
+        return root_path
+
+    return '/'
 
 # Route-naam → URL mapping (wordt gebruikt door url_for in templates)
 # Format: route_name: (prefix, path_pattern)
@@ -38,9 +66,10 @@ ROUTE_MAP = {
     # Tags
     "tags_list": ("/api/tags", "/lijst"),
     "tag_detail": ("/api/tags", "/{id}"),
-    # Admin
+    # Admin / Profiel
     "admin_page": ("", "/admin"),
     "login_page": ("", "/login"),
+    "profile_page": ("", "/profiel"),
     # API endpoints (gebruikt door JavaScript)
     "api_auth_me": ("/api/auth", "/me"),
     "api_auth_login": ("/api/auth", "/login"),
@@ -53,27 +82,54 @@ ROUTE_MAP = {
     "dossier_files_upload": ("/api/dossier/files/upload", "/{initiative_id}"),
     "question_file_download": ("/api/vragen/{question_id}/files/download", "/{file_id}"),
     "question_files_upload": ("/api/vragen/{question_id}/files/upload", ""),
+    # Export
+    "export_excel": ("/api/export", "/excel"),
+    # AI endpoints
+    "ai_suggest_initiatives": ("/api/ai/curaties/{curation_id}", "/suggest-initiatives"),
+    "ai_suggest_hypotheses": ("/api/ai/initiatieven/{initiative_id}", "/suggest-hypotheses"),
+    "ai_narratief": ("/api/ai/curaties/{curation_id}", "/narratief"),
+    "ai_onepager": ("/api/ai/initiatieven/{initiative_id}", "/one-pager"),
 }
+
+
+def _join_paths(*parts: str) -> str:
+    """Voeg URL-pad delen samen met precies één slash tussen elk deel.
+
+    /innovatiepijplijn + /api/auth + /me → /innovatiepijplijn/api/auth/me
+    / + / → /
+    """
+    result = '/'
+    for part in parts:
+        # Haal leading/trailing slashes weg, voeg toe als er inhoud is
+        stripped = part.strip('/')
+        if stripped:
+            result = result.rstrip('/') + '/' + stripped
+    return result
 
 
 def url_for(route_name: str, **kwargs) -> str:
     """Genereer een volledige URL voor een route-naam.
 
     Gebruik in templates als:
-      {{ url_for('dashboard') }}           → /  of http://host/
+      {{ url_for('dashboard') }}           → /  of /innovatiepijplijn/
       {{ url_for('initiative_detail', id='abc-123') }}
 
     kwargs worden gebruikt om {placeholder} in het pad te vervangen.
+    Het basis-pad (APP_BASE_URL path component) wordt automatisch voorafgezet.
     """
     route = ROUTE_MAP.get(route_name)
     if not route:
         return "#"
     prefix, path = route
-    # Vervang placeholders met kwargs
+    # Vervang placeholders met kwargs — zowel in prefix als path
     for key, value in kwargs.items():
-        path = path.replace("{" + key + "}", str(value))
-    full_path = prefix + path
-    return full_path
+        placeholder = "{" + key + "}"
+        prefix = prefix.replace(placeholder, str(value))
+        path = path.replace(placeholder, str(value))
+
+    # Voeg basis-pad + prefix + path samen
+    base_path = get_base_path()
+    return _join_paths(base_path, prefix, path)
 
 
 def url_for_full(route_name: str, **kwargs) -> str:
@@ -327,6 +383,7 @@ def render_markdown(text: str) -> str:
 
 
 # Registreer functies bij Jinja2 environment
+templates.env.globals["base_path"] = get_base_path
 templates.env.globals["url_for"] = url_for
 templates.env.globals["url_for_full"] = url_for_full
 templates.env.globals["base_url"] = get_base_url

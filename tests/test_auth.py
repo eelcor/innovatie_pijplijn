@@ -125,9 +125,9 @@ class TestCSRFProtection:
     async def test_csrf_middleware_exists(self):
         """CSRF middleware is correct geïmplementeerd."""
         from app.csrf import CSRFMiddleware
-        assert hasattr(CSRFMiddleware, "EXEMPT_PATHS")
-        assert "/api/auth/login" in CSRFMiddleware.EXEMPT_PATHS
-        assert "/health" in CSRFMiddleware.EXEMPT_PATHS
+        assert hasattr(CSRFMiddleware, "_EXEMPT_PATHS")
+        assert "/api/auth/login" in CSRFMiddleware._EXEMPT_PATHS
+        assert "/health" in CSRFMiddleware._EXEMPT_PATHS
 
     async def test_login_exempt_from_csrf(self, test_client):
         """Login endpoint is vrijgesteld van CSRF."""

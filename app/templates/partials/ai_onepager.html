@@ -15,7 +15,7 @@
 
     <button
         type="button"
-        hx-post="/api/ai/initiatieven/{{ initiative_id }}/one-pager"
+        hx-post="{{ url_for('ai_onepager', initiative_id=initiative_id) }}"
         hx-target="#ai-onepager-result"
         hx-indicator="#ai-onepager-spinner"
         class="btn btn-secondary"

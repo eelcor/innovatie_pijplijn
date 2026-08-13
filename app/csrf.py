@@ -19,6 +19,8 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
+from app.helpers import get_base_path
+
 # Cookie naam voor CSRF token
 CSRF_COOKIE_NAME = "csrf_token"
 CSRF_HEADER_NAME = "X-CSRF-Token"
@@ -41,8 +43,8 @@ class CSRFMiddleware(BaseHTTPMiddleware):
     - In test modus (TESTING=true): CSRF validatie wordt uitgeschakeld
     """
 
-    # Routes die vrijgesteld zijn van CSRF (bijv. login, health)
-    EXEMPT_PATHS = {
+    # Routes die vrijgesteld zijn van CSRF (bijv. login, health) — zonder base_path
+    _EXEMPT_PATHS = {
         "/api/auth/login",
         "/api/auth/logout",
         "/api/auth/csrf-token",
@@ -51,9 +53,17 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         "/health",
     }
 
+    @staticmethod
+    def _strip_base(path: str) -> str:
+        """Strip base_path prefix van request path voor exempt-check."""
+        base = get_base_path()
+        if base and base != '/' and path.startswith(base):
+            return path[len(base):] or '/'
+        return path
+
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         method = request.method.upper()
-        path = request.url.path
+        path = self._strip_base(request.url.path)
 
         # Test modus: geen CSRF validatie
         if os.environ.get("TESTING", "false").lower() == "true":
@@ -61,7 +71,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
             return response
 
         # Vrijgestelde routes overslaan
-        if path in self.EXEMPT_PATHS:
+        if path in self._EXEMPT_PATHS:
             return await call_next(request)
 
         # Alleen muterende methods controleren
@@ -93,7 +103,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
                 httponly=False,  # Moet leesbaar zijn voor JavaScript
                 samesite="lax",
                 max_age=TOKEN_TTL_HOURS * 3600,
-                path="/",
+                path=get_base_path(),
             )
 
         return response
@@ -132,7 +142,7 @@ async def csrf_token_endpoint(request: Request, response: Response):
             httponly=False,
             samesite="lax",
             max_age=TOKEN_TTL_HOURS * 3600,
-            path="/",
+            path=get_base_path(),
         )
     return {"csrf_token": token}
 
@@ -140,13 +150,13 @@ async def csrf_token_endpoint(request: Request, response: Response):
 class AuthMiddleware(BaseHTTPMiddleware):
     """Authenticatie middleware — redirect naar /login als niet ingelogd.
 
-    - HTML requests: 302 redirect naar /login?redirect=...
+    - HTML requests: 302 redirect naar /login?redirect=... (base-path aware)
     - API requests: 401 JSON response
     - Test modus: geen authenticatie vereist
     """
 
-    # Routes die geen authenticatie nodig hebben
-    EXEMPT_PATHS = {
+    # Routes die geen authenticatie nodig hebben (zonder base_path prefix)
+    _EXEMPT_PATHS = {
         "/api/auth/login",
         "/api/auth/logout",
         "/api/auth/csrf-token",
@@ -155,19 +165,27 @@ class AuthMiddleware(BaseHTTPMiddleware):
         "/health",
     }
 
+    @staticmethod
+    def _strip_base(path: str) -> str:
+        """Strip base_path prefix van request path voor exempt-check."""
+        base = get_base_path()
+        if base and base != '/' and path.startswith(base):
+            return path[len(base):] or '/'
+        return path
+
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        path = request.url.path
+        path = self._strip_base(request.url.path)
 
         # Test modus: geen authenticatie vereist
         if os.environ.get("TESTING", "false").lower() == "true":
             return await call_next(request)
 
         # Vrijgestelde routes overslaan
-        if path in self.EXEMPT_PATHS:
+        if path in self._EXEMPT_PATHS:
             return await call_next(request)
 
         # Static files en uploads overslaan
-        if path.startswith("/static/") or path.startswith("/api/dossier/download/"):
+        if path.startswith("/static/") or "/api/dossier/download/" in path:
             return await call_next(request)
 
         # Check sessie cookie
@@ -175,14 +193,18 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if not session_cookie:
             # Bepaal of het een API of HTML request is
             accept_header = request.headers.get("accept", "")
-            is_api = path.startswith("/api/")
+            base = get_base_path()
+            # Check API path met of zonder base_path prefix
+            is_api = path.startswith(base + "/api/") if base != '/' else path.startswith("/api/")
             is_html = "text/html" in accept_header or (not is_api and "application/json" not in accept_header)
 
-            # Bepaal redirect URL
+            # Bepaal redirect URL — scope naar app basis-pad
             current_path = request.url.path
             if request.query_params:
                 current_path += "?" + str(request.query_params)
-            login_redirect = f"/login?redirect={current_path}"
+
+            # Valideer: redirect moet binnen het app-basis-pad blijven (geen open redirect)
+            login_redirect = f"{base}/login?redirect={current_path}"
 
             if is_html:
                 return RedirectResponse(url=login_redirect, status_code=302)

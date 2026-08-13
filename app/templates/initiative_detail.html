@@ -1243,7 +1243,7 @@
               </svg>
             </div>
             <div class="dossier-info" ${canView ? `style="cursor:pointer;" onclick="openFilePreview('${f.id}', '${f.mime_type}')"` : ''}>
-              <div class="dossier-name"><a href="/api/dossier/files/download/${f.id}" style="color:var(--fg); text-decoration:none;">${f.filename}</a></div>
+              <div class="dossier-name"><a href="apiPath('/api/dossier/files/download/' + f.id)" style="color:var(--fg); text-decoration:none;">${f.filename}</a></div>
               <div class="dossier-meta">${formatFileSize(f.file_size)} • ${formatDate(f.uploaded_at)}</div>
             </div>
             <div style="display:flex; gap:4px; margin-left:auto;">
@@ -2239,14 +2239,14 @@
     const downloadLink = document.getElementById('file-preview-download');
     const title = document.getElementById('file-preview-title');
 
-    downloadLink.href = '/api/dossier/files/download/' + fileId;
+    downloadLink.href = apiPath('/api/dossier/files/download/') + fileId;
 
     if (mimeType && mimeType.startsWith('image/')) {
       title.textContent = 'Afbeelding bekijken';
-      content.innerHTML = `<img src="/api/dossier/files/view/${fileId}" style="max-width: 100%; max-height: 60vh; object-fit: contain;" alt="preview">`;
+      content.innerHTML = `<img src="apiPath('/api/dossier/files/view/' + fileId)" style="max-width: 100%; max-height: 60vh; object-fit: contain;" alt="preview">`;
     } else if (mimeType === 'application/pdf') {
       title.textContent = 'PDF bekijken';
-      content.innerHTML = `<iframe src="/api/dossier/files/view/${fileId}" style="width: 100%; height: 60vh; border: 1px solid var(--border);" frameborder="0"></iframe>`;
+      content.innerHTML = `<iframe src="apiPath('/api/dossier/files/view/' + fileId)" style="width: 100%; height: 60vh; border: 1px solid var(--border);" frameborder="0"></iframe>`;
     }
 
     openModal('file-preview');

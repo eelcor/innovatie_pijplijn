@@ -210,7 +210,7 @@ async function exportExcel() {
   try {
     // Fetch the file as blob
     const csrfToken = await getCsrfToken();
-    const response = await fetch('/api/export/excel', {
+    const response = await fetch(apiPath('/api/export/excel'), {
       credentials: 'same-origin',
       headers: {
         'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

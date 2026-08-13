@@ -1424,7 +1424,7 @@
       <!-- Profiel link (alle ingelogde gebruikers) -->
       <nav class="nav-section" id="profile-nav">
         <div class="nav-label">Persoonlijk</div>
-        <a href="/profiel" class="nav-item {% if active_page == 'profiel' %}active{% endif %}">
+        <a href="{{ url_for('profile_page') }}" class="nav-item {% if active_page == 'profiel' %}active{% endif %}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
             <circle cx="12" cy="7" r="4"/>
@@ -1820,6 +1820,9 @@
       return labels[h] || h;
     }
 
+    // --- Basis-pad voor reverse-proxy / subpad support ---
+    const BASE_PATH = '{{ base_path() }}';
+
     // --- Route URLs (gegenereerd door server, netwerk-agnostisch) ---
     const ROUTES = {
       dashboard: '{{ url_for("dashboard") }}',
@@ -1832,6 +1835,15 @@
       curationDetail: '{{ url_for("curation_detail", id="__ID__") }}',
       dossierFileUpload: '{{ url_for("dossier_files_upload", initiative_id="__ID__") }}',
     };
+
+    // --- Helper: voeg BASE_PATH toe aan relatief API-pad ---
+    function apiPath(path) {
+      // Als path al met BASE_PATH begint, voorkom duplicatie
+      if (BASE_PATH !== '/' && !path.startsWith(BASE_PATH)) {
+        return BASE_PATH + path;
+      }
+      return path;
+    }
 
     // CSRF token
     let csrfToken = null;
@@ -1849,8 +1861,12 @@
       return csrfToken;
     }
 
-    // API helper with CSRF token
+    // API helper with CSRF token — voegt automatisch BASE_PATH toe
     async function apiCall(url, options = {}) {
+      // Voeg BASE_PATH toe aan relatief pad (alleen als url niet absoluut is)
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = apiPath(url);
+      }
       const defaults = {
         headers: { 'Content-Type': 'application/json' },
       };
@@ -1989,7 +2005,7 @@
       if (select.dataset.loaded === 'true') { console.log('[DEBUG] Already loaded, skipping'); return; }
       try {
         console.log('[DEBUG] Fetching questions...');
-        const res = await fetch('/api/vragen/json', {
+        const res = await fetch(apiPath('/api/vragen/json'), {
           headers: { 'Content-Type': 'application/json' },
         });
         console.log('[DEBUG] Response status:', res.status);

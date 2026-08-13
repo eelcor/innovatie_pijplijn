@@ -320,7 +320,7 @@
     try {
       await apiCall('/api/curaties/' + id, { method: 'DELETE' });
       showToast('Curatie verwijderd');
-      window.location.href = '/';
+      window.location.href = ROUTES.dashboard;
     } catch (err) {
       console.error(err);
     }

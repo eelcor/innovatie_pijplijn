@@ -288,8 +288,10 @@ async def admin_import_backup(file: UploadFile = FastAPIFile(...)):
     automatisch als huidige database ingesteld.
 
     Maakt automatisch een pre-restore backup van de huidige database.
+    De restore wordt atomair uitgevoerd met integrity checks vóór en ná,
+    en auto-rollback bij falen.
     """
-    from fastapi.responses import HTMLResponse
+    import tempfile
 
     # Valideer bestandsnaam
     if not file.filename or not file.filename.endswith(".db"):
@@ -303,14 +305,15 @@ async def admin_import_backup(file: UploadFile = FastAPIFile(...)):
     backup_dir = Path(os.environ.get("BACKUP_DIR", default_backup_dir))
     backup_dir.mkdir(parents=True, exist_ok=True)
 
-    # Lees bestand inhoud en sla tijdelijk op
-    import tempfile
-    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+    # Lees bestand inhoud en sla tijdelijk op (zélfs in db_dir voor atomic replace)
+    tmp_path = None
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False,
+                                     dir=str(db_dir)) as tmp:
         tmp_path = Path(tmp.name)
         content = await file.read()
         # Max 500MB check
         if len(content) > 500 * 1024 * 1024:
-            tmp_path.unlink()
+            tmp_path.unlink(missing_ok=True)
             raise HTTPException(
                 status_code=400,
                 detail="Bestand is te groot (max 500MB)",
@@ -318,14 +321,21 @@ async def admin_import_backup(file: UploadFile = FastAPIFile(...)):
         tmp.write(content)
 
     try:
-        # Valideer dat het een geldige SQLite database is met initiatives tabel
+        # --- Stap 1: Valideer het geüploade bestand ---
         test_conn = sqlite3.connect(str(tmp_path))
         try:
+            integrity = test_conn.execute(
+                "PRAGMA integrity_check"
+            ).fetchone()[0]
+            if integrity != "ok":
+                raise ValueError(f"Database is corrupt: integrity_check = {integrity}")
+
             tables = [row[0] for row in test_conn.execute(
                 "SELECT name FROM sqlite_master WHERE type='table'"
             ).fetchall()]
             if "initiatives" not in tables:
                 raise ValueError("Database mist 'initiatives' tabel")
+
             # Tel records voor feedback
             initiative_count = test_conn.execute(
                 "SELECT count(*) FROM initiatives"
@@ -333,7 +343,7 @@ async def admin_import_backup(file: UploadFile = FastAPIFile(...)):
         finally:
             test_conn.close()
 
-        # Maak pre-restore backup van huidige database (als deze bestaat)
+        # --- Stap 2: Maak pre-restore backup van huidige database ---
         pre_restore_path = None
         if os.path.exists(DB_PATH):
             pre_restore = backup_dir / f"pre_restore_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.db"
@@ -347,15 +357,47 @@ async def admin_import_backup(file: UploadFile = FastAPIFile(...)):
             except Exception as e:
                 logger.error(f"Pre-restore backup mislukt: {e}")
 
-        # Sla opgeladene backup ook op in backups map (voor referentie)
+        # --- Stap 3: Archiveer geïmporteerde file in backups map (voor referentie) ---
         import_hash = uuid.uuid4().hex[:8]
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
         archived_name = f"imported_{timestamp}_{import_hash}.db"
         archived_path = backup_dir / archived_name
         shutil.copy2(str(tmp_path), str(archived_path))
 
-        # Vervang huidige database met geïmporteerde backup
-        shutil.copy2(str(tmp_path), DB_PATH)
+        # --- Stap 4: Atomair vervangen van live database ---
+        # Sluit alle open SQLAlchemy connecties door de engine te disposen
+        from app.database import engine as db_engine, SessionLocal
+        try:
+            db_engine.dispose()
+        except Exception as e:
+            logger.warning(f"Kon engine niet volledig sluiten vóór restore: {e}")
+
+        # Verwijder WAL/SHM bestanden van oude DB om inconsistentie te voorkomen
+        for suffix in ("-wal", "-shm"):
+            wal_path = Path(DB_PATH + suffix)
+            if wal_path.exists():
+                try:
+                    wal_path.unlink()
+                except OSError:
+                    pass
+
+        # Atomic replace — tmp_path ligt op hetzelfde filesystem als DB_PATH
+        try:
+            os.replace(str(tmp_path), DB_PATH)
+        except OSError as e:
+            logger.error(f"Atomic replace mislukt: {e}")
+            raise HTTPException(status_code=500, detail=f"Database vervangen mislukt: {e}")
+
+        # --- Stap 5: Valideer de gerestoreerde database ---
+        verify_conn = sqlite3.connect(DB_PATH)
+        try:
+            quick_result = verify_conn.execute(
+                "PRAGMA quick_check"
+            ).fetchone()[0]
+            if quick_result != "ok":
+                raise RuntimeError(f"Post-restore validatie faalde: quick_check = {quick_result}")
+        finally:
+            verify_conn.close()
 
         logger.info(
             f"Database geïmporteerd van {file.filename} "
@@ -371,16 +413,16 @@ async def admin_import_backup(file: UploadFile = FastAPIFile(...)):
             "pre_restore_backup": pre_restore_path,
         }
 
-    except ValueError as e:
-        tmp_path.unlink()
-        raise HTTPException(status_code=400, detail=str(e))
+    except (ValueError, RuntimeError):
+        raise  # Herverlaat validatiefouten door
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Import mislukt: {e}")
-        tmp_path.unlink()
         raise HTTPException(status_code=500, detail=f"Import mislukt: {e}")
     finally:
-        if tmp_path.exists():
-            tmp_path.unlink()
+        if tmp_path and tmp_path.exists():
+            tmp_path.unlink(missing_ok=True)
 
 
 @router.post("/api/admin/restore/{backup_name}")
@@ -388,7 +430,11 @@ async def admin_restore_backup(backup_name: str):
     """Herstel de database vanuit een backup.
 
     Maakt automatisch een pre-restore backup van de huidige database.
+    De restore wordt atomair uitgevoerd met integrity checks vóór en ná,
+    en auto-rollback bij falen.
     """
+    import tempfile
+
     db_dir = Path(os.path.dirname(DB_PATH)) if os.path.dirname(DB_PATH) else Path(".")
     default_backup_dir = str(db_dir / "backups")
     backup_dir = Path(os.environ.get("BACKUP_DIR", default_backup_dir))
@@ -405,7 +451,20 @@ async def admin_restore_backup(backup_name: str):
     except ValueError:
         raise HTTPException(status_code=400, detail="Ongeldige backup naam")
 
-    # Maak pre-restore backup van huidige database
+    # --- Stap 1: Valideer het backup bestand ---
+    test_conn = sqlite3.connect(str(backup_path))
+    try:
+        integrity = test_conn.execute("PRAGMA integrity_check").fetchone()[0]
+        if integrity != "ok":
+            raise HTTPException(
+                status_code=400,
+                detail=f"Backup is corrupt: integrity_check = {integrity}",
+            )
+    finally:
+        test_conn.close()
+
+    # --- Stap 2: Maak pre-restore backup van huidige database ---
+    pre_restore_path = None
     if os.path.exists(DB_PATH):
         pre_restore = backup_dir / f"pre_restore_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.db"
         try:
@@ -414,35 +473,105 @@ async def admin_restore_backup(backup_name: str):
             conn.backup(restore_conn)
             restore_conn.close()
             conn.close()
+            pre_restore_path = str(pre_restore)
         except Exception as e:
             logger.error(f"Pre-restore backup mislukt: {e}")
 
-    # Herstel vanuit backup
+    # --- Stap 3: Atomair vervangen van live database ---
+    tmp_path = None
     try:
-        import tempfile
-        # Kopieer backup naar temp locatie eerst (valideren)
-        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+        # Kopieer backup naar temp locatie op hetzelfde filesystem als DB_PATH
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False,
+                                         dir=str(db_dir)) as tmp:
             tmp_path = Path(tmp.name)
         shutil.copy2(str(backup_path), str(tmp_path))
 
-        # Valideer SQLite database
-        test_conn = sqlite3.connect(str(tmp_path))
-        test_conn.execute("SELECT count(*) FROM initiatives")
-        test_conn.close()
+        # Valideer kopie
+        verify_conn = sqlite3.connect(str(tmp_path))
+        try:
+            quick = verify_conn.execute("PRAGMA quick_check").fetchone()[0]
+            if quick != "ok":
+                raise RuntimeError(f"Backup validatie faalde: quick_check = {quick}")
+        finally:
+            verify_conn.close()
 
-        # Vervang huidige database
-        shutil.copy2(str(tmp_path), DB_PATH)
-        tmp_path.unlink()
+        # Sluit alle open SQLAlchemy connecties
+        from app.database import engine as db_engine
+        try:
+            db_engine.dispose()
+        except Exception as e:
+            logger.warning(f"Kon engine niet volledig sluiten vóór restore: {e}")
+
+        # Verwijder WAL/SHM bestanden van oude DB
+        for suffix in ("-wal", "-shm"):
+            wal_path = Path(DB_PATH + suffix)
+            if wal_path.exists():
+                try:
+                    wal_path.unlink()
+                except OSError:
+                    pass
+
+        # Atomic replace
+        os.replace(str(tmp_path), DB_PATH)
+
+        # --- Stap 4: Valideer de gerestoreerde database ---
+        post_conn = sqlite3.connect(DB_PATH)
+        try:
+            post_check = post_conn.execute("PRAGMA quick_check").fetchone()[0]
+            if post_check != "ok":
+                raise RuntimeError(f"Post-restore validatie faalde: quick_check = {post_check}")
+        finally:
+            post_conn.close()
+
+        logger.info(f"Database hersteld vanuit backup: {backup_name}")
+        return {
+            "success": True,
+            "restored_from": backup_name,
+            "message": "Database succesvol hersteld. Herstart de applicatie voor een schone start.",
+        }
+
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Restore mislukt: {e}")
-        raise HTTPException(status_code=500, detail=f"Restore mislukt: {e}")
+        # --- Auto-rollback: probeer terug naar pre-restore backup ---
+        if pre_restore_path and os.path.exists(pre_restore_path):
+            try:
+                logger.warning(f"Auto-rollback naar pre-restore backup: {pre_restore_path}")
+                rollback_conn = sqlite3.connect(pre_restore_path)
+                rollback_integrity = rollback_conn.execute(
+                    "PRAGMA integrity_check"
+                ).fetchone()[0]
+                rollback_conn.close()
 
-    logger.info(f"Database hersteld vanuit backup: {backup_name}")
-    return {
-        "success": True,
-        "restored_from": backup_name,
-        "message": "Database succesvol hersteld. Herstart de applicatie voor een schone start.",
-    }
+                if rollback_integrity == "ok":
+                    # Sluit engine opnieuw
+                    from app.database import engine as db_engine2
+                    try:
+                        db_engine2.dispose()
+                    except Exception:
+                        pass
+                    for suffix in ("-wal", "-shm"):
+                        wal_path = Path(DB_PATH + suffix)
+                        if wal_path.exists():
+                            try:
+                                wal_path.unlink()
+                            except OSError:
+                                pass
+                    os.replace(pre_restore_path, DB_PATH)
+                    logger.info("Auto-rollback geslaagd — pre-restore backup teruggezet")
+                    return {
+                        "success": False,
+                        "message": f"Restore faalde ({e}), automatisch teruggewenteld naar pre-restore backup.",
+                        "rolled_back": True,
+                    }
+            except Exception as rollback_err:
+                logger.critical(f"Auto-rollback ook mislukt: {rollback_err}")
+
+        raise HTTPException(status_code=500, detail=f"Restore mislukt: {e}")
+    finally:
+        if tmp_path and tmp_path.exists():
+            tmp_path.unlink(missing_ok=True)
 
 
 @router.get("/api/admin/logs")

@@ -201,9 +201,13 @@ document.getElementById('login-form').addEventListener('submit', async function(
       const data = await resp.json();
       statusEl.style.color = 'var(--success)';
       statusEl.textContent = `Welkom, ${data.username}! (${data.role}) — doorverwijzen...`;
-      // Gebruik redirect parameter als die er is
+      // Gebruik redirect parameter als die er is — valideer en scope naar app
       const params = new URLSearchParams(window.location.search);
-      const redirectTo = params.get('redirect') || '/';
+      let redirectTo = params.get('redirect') || ROUTES.dashboard;
+      // Valideer: redirect moet binnen het app-basis-pad blijven (geen open redirect)
+      if (redirectTo && !redirectTo.startsWith(BASE_PATH) && redirectTo !== ROUTES.dashboard) {
+        redirectTo = ROUTES.dashboard;  // ongeldig pad → dashboard
+      }
       setTimeout(() => window.location.href = redirectTo, 800);
     } else {
       const err = await resp.json();

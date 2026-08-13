@@ -15,7 +15,7 @@
 
     <button
         type="button"
-        hx-post="/api/ai/initiatieven/{{ initiative_id }}/suggest-hypotheses"
+        hx-post="{{ url_for('ai_suggest_hypotheses', initiative_id=initiative_id) }}"
         hx-target="#ai-hypothesis-result"
         hx-indicator="#ai-hypothesis-spinner"
         class="btn btn-secondary"

@@ -252,10 +252,11 @@ innovatie_pijplijn/
 │   └── static/            # Static assets (CSS, JS)
 ├── docker-compose.yml     # Docker Compose configuratie
 ├── Dockerfile             # Multi-stage Docker build
+├── alembic/               # Database migraties (Alembic)
+│   └── versions/          # Migratie-bestanden
 ├── scripts/               # Installatie en onderhoudsscripts
 │   ├── install.sh         # Geautomatiseerde installatie
 │   ├── update.sh          # Update met backup
-│   ├── migrate_v02.py     # Database migratie voor v0.2 velden
 │   └── import_excel_v02.py # Import uit Excel inventarisatie
 ├── tests/                 # Pytest test suite
 ├── docs/                  # Documentatie
@@ -355,7 +356,8 @@ Volledige API documentatie is beschikbaar op `/docs` na het starten van de appli
 - Alle API endpoints uitgebreid met nieuwe velden
 - Excel export bevat nu alle 23 kolommen
 - Filter API ondersteunt sorteren op nieuwe velden
-- Database migratie scripts (`scripts/migrate_v02.py`, `scripts/import_excel_v02.py`)
+- Database migraties via Alembic (automatisch bij startup)
+- Excel import script (`scripts/import_excel_v02.py`)
 
 ### v0.1.0 — Initiële release
 - Initiatiefbeheer met fase, status, horizon tracking

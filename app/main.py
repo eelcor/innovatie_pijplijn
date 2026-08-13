@@ -101,11 +101,17 @@ async def lifespan(app: FastAPI):
     logger.info("Innovatiepijplijn shut-down")
 
 
+# Bepaal root_path voor reverse-proxy / subpad support
+_base_url = os.environ.get("APP_BASE_URL", "http://localhost:8000")
+from urllib.parse import urlparse as _urlparse
+_root_path = _urlparse(_base_url).path.rstrip('/') or ''
+
 app = FastAPI(
     title="Innovatiepijplijn",
     description="Registratie- en analysetool voor innovatie-initiatieven",
     version="0.1.0",
     lifespan=lifespan,
+    root_path=_root_path if _root_path else '',
 )
 
 # CSRF middleware — beschermt alle POST/PUT/DELETE/PATCH routes
@@ -117,14 +123,7 @@ app.add_middleware(AuthMiddleware)
 # Static files
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "app", "static")), name="static")
 
-# Injecteer APP_BASE_URL in alle template responses via context processor
-@app.middleware("http")
-async def add_base_url_to_context(request: Request, call_next):
-    response = await call_next(request)
-    return response
-
-# Registreer base_url als Jinja2 globale waarde
-templates.env.globals["base_url"] = get_base_url
+# base_url en base_path zijn als Jinja2 globals geregistreerd in helpers.py
 
 # Auth routes (login/logout/user management) — geen CSRF nodig op deze endpoints
 # (CSRF wordt toegepast via middleware maar auth routes hebben eigen sessie-beheer)
@@ -173,7 +172,7 @@ async def profile_page(
     )
 
 # Route registries
-# Route registries — alle routes krijgen een prefix-prefix van APP_BASE_URL indien ingesteld
+# Subpad-support wordt afgehandeld via FastAPI root_path en de url_for() helper
 # Dashboard (geen prefix)
 app.include_router(dashboard.router, tags=["dashboard"])
 app.include_router(initiatives.router, prefix="/api/initiatieven", tags=["initiatieven"])

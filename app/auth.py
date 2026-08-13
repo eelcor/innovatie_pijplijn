@@ -354,13 +354,14 @@ async def login(
 
     # Creëer sessie cookie
     token = create_session_token(user.id, user.username, user.role)
+    from app.helpers import get_base_path
     response.set_cookie(
         key="session",
         value=token,
         httponly=True,
         samesite="lax",
         max_age=SESSION_EXPIRY_HOURS * 3600,
-        path="/",
+        path=get_base_path(),
     )
 
     return {
@@ -376,13 +377,14 @@ async def logout(
     current_user: User = Depends(get_current_user),
 ):
     """Log uit door de sessie cookie te verwijderen."""
+    from app.helpers import get_base_path
     response.set_cookie(
         key="session",
         value="",
         httponly=True,
         samesite="lax",
         max_age=0,
-        path="/",
+        path=get_base_path(),
     )
     return {"message": "Uitgelogd"}
 

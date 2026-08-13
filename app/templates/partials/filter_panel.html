@@ -285,7 +285,7 @@
     if (filterState.order) params.set('order', filterState.order);
 
     try {
-      var url = '/api/initiatieven/filter?' + params.toString();
+      var url = apiPath('/api/initiatieven/filter') + '?' + params.toString();
       fetch(url, { headers: { 'Content-Type': 'application/json' } })
         .then(function(response) {
           if (!response.ok) throw new Error('HTTP ' + response.status);

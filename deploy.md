@@ -99,7 +99,13 @@ AI_TEMPERATURE=0.7
 AI_MAX_TOKENS=8192
 ```
 
-> De admin kan AI-instellingen live aanpassen via het beheerpaneel (`/admin` → "Model Configuratie"). Waarden in `.env` fungeren als defaults.
+> De admin kan AI-instellingen live aanpassen via het beheerpaneel (`/admin` → "Model Configuratie").
+> Waarden in `.env` fungeren als defaults.
+>
+> **Configuratie-voorrang** (van hoog naar laag):
+> 1. `data/admin_config.json` — persistent admin-instellingen, overschrijft `.env`
+> 2. `.env` / environment variabelen — bijv. `MODEL_URL`, `AI_ENABLED`
+> 3. Hardcoded defaults — fallback als niets anders is ingesteld
 
 ### Belangrijkste variabelen
 
@@ -158,9 +164,21 @@ curl http://localhost:8000/health
 
 | Versie | Wijzigingen | Migratie nodig? |
 |--------|-------------|-----------------|
-| v0.2.1 | Bugfix: formulieren en error handling | Nee |
-| v0.2.0 | Beleidsmatrix, governance, gerelateerde initiatieven | Nee (auto bij rebuild) |
+| v0.2.1 | Bugfix: formulieren en error handling | Nee (auto) |
+| v0.2.0 | Beleidsmatrix, governance, gerelateerde initiatieven | Ja — automatische Alembic-migratie bij startup |
 | v0.1.0 | Initiële release | — |
+
+**Automatische migraties:** Bij elke startup voert de app automatisch database-migraties uit via Alembic. Bestaande databases worden geadopteerd en opgewaardeerd zonder dataverlies. De migratiestatus wordt bijgehouden in de `alembic_version` tabel.
+
+**Handmatige migratie (indien nodig):**
+```bash
+docker compose exec innovatiepijplijn alembic upgrade head
+```
+
+**Migratielog bekijken:**
+```bash
+docker compose exec innovatiepijplijn alembic current
+```
 
 ---
 
@@ -206,6 +224,14 @@ Via de admin UI:
 2. Klik op "Importeer backup"
 3. Selecteer een `.db` bestand
 4. Bevestig — er wordt eerst een pre-restore backup gemaakt
+
+**Veiligheidsmaatregelen bij restore:**
+- **Integrity check vóór import:** Het te importeren bestand wordt gevalideerd (`PRAGMA integrity_check`)
+- **Pre-restore backup:** De huidige database wordt altijd gebackupt vóór vervanging
+- **Atomaire swap:** De database wordt vervangen via `os.replace()` (atoom-operatie op zelfde filesystem)
+- **Post-restore validatie:** De gerestoreerde database wordt direct gevalideerd (`PRAGMA quick_check`)
+- **Auto-rollback:** Als de post-restore check faalt, wordt automatisch teruggewenteld naar de pre-restore backup
+- **Schema-compatibiliteit:** Het geïmporteerde bestand moet een `initiatives` tabel bevatten
 
 ### Wat zit er in de backup?
 
@@ -331,10 +357,14 @@ docker compose start
 ### Upgrade problemen
 
 Bij upgrade van v0.1 naar v0.2:
-- De database migratie (nieuwe kolommen) wordt automatisch uitgevoerd bij container rebuild
+- Database-migraties worden **automatisch** uitgevoerd via Alembic bij elke startup
 - Handmatige migratie indien nodig:
   ```bash
-  docker compose exec innovatiepijplijn python3 /app/scripts/migrate_v02.py
+  docker compose exec innovatiepijplijn alembic upgrade head
+  ```
+- Migratiestatus bekijken:
+  ```bash
+  docker compose exec innovatiepijplijn alembic current
   ```
 
 ---
@@ -352,13 +382,15 @@ Bij upgrade van v0.1 naar v0.2:
 
 3. **Firewall** — beperk toegang tot poort 8000 tot vertrouwde netwerken
 
-4. **HTTPS** — gebruik een reverse proxy (nginx, traefik) voor TLS encryptie
+4. **HTTPS** — gebruik een reverse proxy (nginx, Caddy, traefik) voor TLS encryptie
 
 5. **Regelmatige backups** — plan automatische backups via cron of de backup API
 
 6. **Log monitoring** — configureer log rotatie en alerting op errors
 
-### Reverse proxy configuratie (nginx voorbeeld)
+### Reverse proxy configuratie (nginx en Caddy)
+
+**Optie A: Eigen subdomein of root-pad**
 
 ```nginx
 server {
@@ -378,3 +410,152 @@ server {
 ```
 
 Vergeet niet `APP_BASE_URL=https://innovatiepijplijn.example.com` te zetten in `.env`.
+
+**Optie B: Subpad op bestaand domein**
+
+De app ondersteunt native subpad-deployments. Stel `APP_BASE_URL` inclusief het pad:
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name gemeente.example.com;
+
+    ssl_certificate     /etc/ssl/certs/cert.pem;
+    ssl_certificate_key /etc/ssl/private/key.pem;
+
+    location /innovatiepijplijn/ {
+        proxy_pass http://localhost:8000/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Prefix /innovatiepijplijn;
+    }
+}
+```
+
+In `.env`:
+```bash
+APP_BASE_URL=https://gemeente.example.com/innovatiepijplijn
+```
+
+Alle URL's (links, API-calls, redirects, cookies) worden automatisch voorafgezet met `/innovatiepijplijn`.
+
+---
+
+### Caddy als reverse proxy
+
+Caddy biedt automatische HTTPS (via Let's Encrypt) en vereist minder configuratie dan nginx.
+
+**Optie A: Eigen subdomein of root-pad**
+
+```caddy
+innovatiepijplijn.example.com {
+    reverse_proxy localhost:8000
+}
+```
+
+Caddy haalt automatisch een TLS-certificaat op. In `.env`:
+```bash
+APP_BASE_URL=https://innovatiepijplijn.example.com
+```
+
+**Optie B: Subpad op bestaand domein**
+
+```caddy
+gemeente.example.com {
+    handle /innovatiepijplijn/* {
+        reverse_proxy localhost:8000
+    }
+}
+```
+
+In `.env`:
+```bash
+APP_BASE_URL=https://gemeente.example.com/innovatiepijplijn
+```
+
+**Optie C: Caddy + Docker Compose**
+
+Caddy kan direct in de Docker-stack worden opgenomen:
+
+```yaml
+services:
+  innovatiepijplijn:
+    build: .
+    container_name: innovatiepijplijn
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  caddy:
+    image: caddy:latest
+    container_name: caddy-reverse-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+    networks:
+      - app-network
+
+volumes:
+  caddy-data:
+  caddy-config:
+
+networks:
+  app-network:
+    driver: bridge
+```
+
+Met een `Caddyfile`:
+```caddy
+gemeente.example.com {
+    handle /innovatiepijplijn/* {
+        reverse_proxy innovatiepijplijn:8000
+    }
+}
+```
+
+**Optie D: Aansluiten op bestaande Caddy-installatie**
+
+Als Caddy al draait op de server (buiten Docker of in een andere stack), voeg alleen de route toe aan de bestaande `Caddyfile`. De app-container hoeft **geen poorten naar buiten** te publiceren — Caddy bereikt hem via het host-netwerk:
+
+```caddy
+gemeente.example.com {
+    # Bestaande routes...
+
+    handle /innovatiepijplijn/* {
+        reverse_proxy localhost:8000
+    }
+}
+```
+
+In de `docker-compose.yml` van de app: publiceer poort 8000 alleen op localhost zodat Caddy erbij kan, maar niet vanaf het externe netwerk:
+
+```yaml
+services:
+  innovatiepijplijn:
+    build: .
+    container_name: innovatiepijplijn
+    env_file: .env
+    ports:
+      - "127.0.0.1:8000:8000"  # alleen lokaal bereikbaar
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+```
+
+In `.env`:
+```bash
+APP_BASE_URL=https://gemeente.example.com/innovatiepijplijn
+```
+
+> **Let op:** Zet `APP_BASE_URL` altijd naar het publieke adres (met subpad), niet naar het interne Docker-adres. De app gebruikt deze waarde voor alle uitgaande URL's.
+
+> **Voordelen van Caddy:** automatische TLS, minder configuratie, en built-in HTTP→HTTPS redirect.

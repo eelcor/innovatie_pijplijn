@@ -15,7 +15,7 @@
 
     <button
         type="button"
-        hx-post="/api/ai/curaties/{{ curation_id }}/suggest-initiatives"
+        hx-post="{{ url_for('ai_suggest_initiatives', curation_id=curation_id) }}"
         hx-target="#ai-curation-result"
         hx-indicator="#ai-curation-spinner"
         class="btn btn-secondary"
