@@ -62,8 +62,6 @@ install-fastcontext-laptop.sh
 initiatives/
 Inventarisatie_AI_initiatieven_v0.1.md
 
-# Alembic (migrations run at build or startup)
-alembic/
-alembic.ini
+# Note: alembic/ en alembic.ini WEL nodig in de image —
+# migraties worden uitgevoerd bij startup (zie app/database.py: init_db)
 
-# Note: uv.lock is needed for Docker build — do not exclude it

@@ -13,6 +13,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
 
 
 # revision identifiers, used by Alembic.
@@ -21,22 +22,39 @@ down_revision: Union[str, Sequence[str], None] = '3a59a07bcdd3'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
+# Nieuwe v0.2 kolommen op de initiatives tabel
+NEW_COLUMNS = {
+    'cluster': sa.Text(),
+    'afdeling': sa.Text(),
+    'team': sa.Text(),
+    'potentie': sa.Text(),
+    'capaciteitsvraag': sa.Text(),
+    'risico': sa.Text(),
+    'bron_initiatief': sa.Text(),
+    'externe_partners': sa.Text(),
+    'betrokkenheid_iv': sa.Text(),
+    'gerelateerde_initiatieven': sa.Text(),
+    'volgende_stap': sa.Text(),
+    'opmerkingen': sa.Text(),
+}
+
+
+def _existing_columns(table_name: str) -> set:
+    """Return the set of column names on a table (empty if it doesn't exist)."""
+    conn = op.get_bind()
+    inspector = inspect(conn)
+    if table_name not in inspector.get_table_names():
+        return set()
+    return {col['name'] for col in inspector.get_columns(table_name)}
+
 
 def upgrade() -> None:
-    """Add v0.2 columns to initiatives table."""
+    """Add v0.2 columns to initiatives table (idempotent — skip existing)."""
+    existing = _existing_columns('initiatives')
     with op.batch_alter_table('initiatives', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('cluster', sa.Text(), nullable=True))
-        batch_op.add_column(sa.Column('afdeling', sa.Text(), nullable=True))
-        batch_op.add_column(sa.Column('team', sa.Text(), nullable=True))
-        batch_op.add_column(sa.Column('potentie', sa.Text(), nullable=True))
-        batch_op.add_column(sa.Column('capaciteitsvraag', sa.Text(), nullable=True))
-        batch_op.add_column(sa.Column('risico', sa.Text(), nullable=True))
-        batch_op.add_column(sa.Column('bron_initiatief', sa.Text(), nullable=True))
-        batch_op.add_column(sa.Column('externe_partners', sa.Text(), nullable=True))
-        batch_op.add_column(sa.Column('betrokkenheid_iv', sa.Text(), nullable=True))
-        batch_op.add_column(sa.Column('gerelateerde_initiatieven', sa.Text(), nullable=True))
-        batch_op.add_column(sa.Column('volgende_stap', sa.Text(), nullable=True))
-        batch_op.add_column(sa.Column('opmerkingen', sa.Text(), nullable=True))
+        for col_name, col_type in NEW_COLUMNS.items():
+            if col_name not in existing:
+                batch_op.add_column(sa.Column(col_name, col_type, nullable=True))
 
 
 def downgrade() -> None:

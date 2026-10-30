@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
 
 
 # revision identifiers, used by Alembic.
@@ -18,17 +19,25 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _table_exists(table_name: str) -> bool:
+    """Check if a table exists — for adopt-existing-DB support."""
+    conn = op.get_bind()
+    inspector = inspect(conn)
+    return table_name in inspector.get_table_names()
+
+
 def upgrade() -> None:
-    op.create_table(
-        'curation_narratives',
-        sa.Column('id', sa.String(length=36), nullable=False),
-        sa.Column('curation_id', sa.String(length=36), nullable=False),
-        sa.Column('content', sa.Text(), nullable=False),
-        sa.Column('created_at', sa.DateTime(), nullable=False),
-        sa.Column('updated_at', sa.DateTime(), nullable=False),
-        sa.PrimaryKeyConstraint('id'),
-        sa.ForeignKeyConstraint(['curation_id'], ['curations.id'], ondelete='CASCADE'),
-    )
+    if not _table_exists('curation_narratives'):
+        op.create_table(
+            'curation_narratives',
+            sa.Column('id', sa.String(length=36), nullable=False),
+            sa.Column('curation_id', sa.String(length=36), nullable=False),
+            sa.Column('content', sa.Text(), nullable=False),
+            sa.Column('created_at', sa.DateTime(), nullable=False),
+            sa.Column('updated_at', sa.DateTime(), nullable=False),
+            sa.PrimaryKeyConstraint('id'),
+            sa.ForeignKeyConstraint(['curation_id'], ['curations.id'], ondelete='CASCADE'),
+        )
 
 
 def downgrade() -> None:

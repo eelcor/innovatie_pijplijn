@@ -142,6 +142,10 @@ def init_db():
             alembic_command.upgrade(config, "head")
         else:
             # Fallback: create_all zonder Alembic
+            logger.warning(
+                f"alembic.ini niet gevonden in {alembic_ini} — migraties overgeslagen, "
+                f"gebruik create_all() fallback. Controleer de Docker build / deploy."
+            )
             Base.metadata.create_all(bind=engine)
     except ImportError:
         # Alembic niet geïnstalleerd — fallback naar create_all

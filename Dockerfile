@@ -33,8 +33,10 @@ RUN groupadd -r appuser && \
 # Kopieer virtual environment van builder stage
 COPY --from=builder /app/.venv /app/.venv
 
-# Kopieer applicatie code
+# Kopieer applicatie code en Alembic migraties
 COPY app/ ./app/
+COPY alembic.ini ./
+COPY alembic/ ./alembic/
 
 # Creëer data directories voor SQLite, uploads en backups
 RUN mkdir -p /app/data/uploads /app/data/backups && \

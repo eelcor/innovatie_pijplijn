@@ -12,8 +12,10 @@ Seeds default permissions and role-permission mappings.
 from typing import Sequence, Union
 
 import uuid
+from datetime import datetime, timezone
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
 
 
 revision: str = 'ce68ec0258d5'
@@ -114,60 +116,83 @@ DEFAULT_ROLE_PERMISSIONS = {
 }
 
 
+def _table_exists(table_name: str) -> bool:
+    """Check if a table exists — for adopt-existing-DB support."""
+    conn = op.get_bind()
+    inspector = inspect(conn)
+    return table_name in inspector.get_table_names()
+
+
+def _count_rows(table_name: str) -> int:
+    """Count rows in a table (0 if it doesn't exist)."""
+    conn = op.get_bind()
+    try:
+        return int(conn.execute(sa.text(f"SELECT COUNT(*) FROM {table_name}")).scalar())
+    except Exception:
+        return 0
+
+
 def upgrade() -> None:
-    """Create permissions tables and seed default data."""
+    """Create permissions tables and seed default data (idempotent)."""
 
     # 1. Create permissions table
-    op.create_table(
-        "permissions",
-        sa.Column("id", sa.String(36), primary_key=True),
-        sa.Column("name", sa.String(100), unique=True, nullable=False, index=True),
-        sa.Column("description", sa.String(255), nullable=True),
-        sa.Column("is_active", sa.Boolean, default=True, nullable=False),
-        sa.Column("created_at", sa.DateTime, server_default=sa.func.now(), nullable=False),
-    )
-
-    # 2. Create role_permissions table
-    op.create_table(
-        "role_permissions",
-        sa.Column("id", sa.String(36), primary_key=True),
-        sa.Column("role_name", sa.String(50), nullable=False, index=True),
-        sa.Column("permission_id", sa.String(36), nullable=False),
-        sa.ForeignKeyConstraint(["permission_id"], ["permissions.id"]),
-    )
-
-    # 3. Seed permissions
-    conn = op.get_bind()
-    perm_ids = {}
-    for name, description in DEFAULT_PERMISSIONS:
-        perm_id = str(uuid.uuid4())
-        perm_ids[name] = perm_id
-        conn.execute(
-            sa.insert(sa.table(
-                "permissions",
-                sa.Column("id", sa.String(36)),
-                sa.Column("name", sa.String(100)),
-                sa.Column("description", sa.String(255)),
-                sa.Column("is_active", sa.Boolean),
-            )).values(id=perm_id, name=name, description=description, is_active=True)
+    if not _table_exists("permissions"):
+        op.create_table(
+            "permissions",
+            sa.Column("id", sa.String(36), primary_key=True),
+            sa.Column("name", sa.String(100), unique=True, nullable=False, index=True),
+            sa.Column("description", sa.String(255), nullable=True),
+            sa.Column("is_active", sa.Boolean, default=True, nullable=False),
+            sa.Column("created_at", sa.DateTime, server_default=sa.func.now(), nullable=False),
         )
 
-    # 4. Seed role_permissions
-    for role_name, perm_names in DEFAULT_ROLE_PERMISSIONS.items():
-        for perm_name in perm_names:
-            if perm_name in perm_ids:
-                conn.execute(
-                    sa.insert(sa.table(
-                        "role_permissions",
-                        sa.Column("id", sa.String(36)),
-                        sa.Column("role_name", sa.String(50)),
-                        sa.Column("permission_id", sa.String(36)),
-                    )).values(
-                        id=str(uuid.uuid4()),
-                        role_name=role_name,
-                        permission_id=perm_ids[perm_name],
+    # 2. Create role_permissions table
+    if not _table_exists("role_permissions"):
+        op.create_table(
+            "role_permissions",
+            sa.Column("id", sa.String(36), primary_key=True),
+            sa.Column("role_name", sa.String(50), nullable=False, index=True),
+            sa.Column("permission_id", sa.String(36), nullable=False),
+            sa.ForeignKeyConstraint(["permission_id"], ["permissions.id"]),
+        )
+
+    # 3. Seed permissions only if the table is empty (fresh DB).
+    #    An adopted DB may already have permissions from prior create_all/seeding.
+    conn = op.get_bind()
+    if _count_rows("permissions") == 0:
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        perm_ids = {}
+        for name, description in DEFAULT_PERMISSIONS:
+            perm_id = str(uuid.uuid4())
+            perm_ids[name] = perm_id
+            conn.execute(
+                sa.insert(sa.table(
+                    "permissions",
+                    sa.Column("id", sa.String(36)),
+                    sa.Column("name", sa.String(100)),
+                    sa.Column("description", sa.String(255)),
+                    sa.Column("is_active", sa.Boolean),
+                    sa.Column("created_at", sa.DateTime),
+                )).values(id=perm_id, name=name, description=description,
+                           is_active=True, created_at=now)
+            )
+
+        # 4. Seed role_permissions
+        for role_name, perm_names in DEFAULT_ROLE_PERMISSIONS.items():
+            for perm_name in perm_names:
+                if perm_name in perm_ids:
+                    conn.execute(
+                        sa.insert(sa.table(
+                            "role_permissions",
+                            sa.Column("id", sa.String(36)),
+                            sa.Column("role_name", sa.String(50)),
+                            sa.Column("permission_id", sa.String(36)),
+                        )).values(
+                            id=str(uuid.uuid4()),
+                            role_name=role_name,
+                            permission_id=perm_ids[perm_name],
+                        )
                     )
-                )
 
 
 def downgrade() -> None:
