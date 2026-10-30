@@ -19,7 +19,7 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
-from app.helpers import get_base_path
+from app.helpers import get_base_path, _join_paths
 
 # Cookie naam voor CSRF token
 CSRF_COOKIE_NAME = "csrf_token"
@@ -204,7 +204,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 current_path += "?" + str(request.query_params)
 
             # Valideer: redirect moet binnen het app-basis-pad blijven (geen open redirect)
-            login_redirect = f"{base}/login?redirect={current_path}"
+            login_redirect = _join_paths(base, "login") + f"?redirect={current_path}"
 
             if is_html:
                 return RedirectResponse(url=login_redirect, status_code=302)
