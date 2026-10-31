@@ -1849,7 +1849,17 @@
     let csrfToken = null;
 
     async function getCsrfToken() {
-      if (csrfToken) return csrfToken;
+      // Double-submit: header moet gelijk zijn aan de cookie. Lees de token
+      // telkens vers uit de cookie i.p.v. een permanente in-memory cache,
+      // zodat een verlopen/regeneratie van de cookie geen stale token oplevert.
+      try {
+        const m = document.cookie.match(/csrf_token=([^;]+)/);
+        if (m && m[1]) {
+          csrfToken = decodeURIComponent(m[1]);
+          return csrfToken;
+        }
+      } catch (e) { /* document.cookie kan in zeldzame gevallen falen */ }
+      // Geen cookie: haal er een op (server zet cookie + retourneert token)
       try {
         const resp = await fetch(ROUTES.csrfToken);
         if (resp.ok) {

@@ -15,7 +15,7 @@ import secrets
 from datetime import timedelta
 from typing import Callable
 
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
@@ -80,16 +80,18 @@ class CSRFMiddleware(BaseHTTPMiddleware):
             header_token = request.headers.get(CSRF_HEADER_NAME)
 
             if not cookie_token or not header_token:
-                raise HTTPException(
+                # Retourneer een correcte 403 (niet raise HTTPException — dat valt
+                # buiten de exception-handler in BaseHTTPMiddleware en zou een 500 geven).
+                return JSONResponse(
                     status_code=403,
-                    detail="CSRF token ontbreekt — voeg X-CSRF-Token header toe",
+                    content={"detail": "CSRF token ontbreekt — vernieuw de pagina en probeer het opnieuw"},
                 )
 
             # Constant-time comparison om timing attacks te voorkomen
             if not secrets.compare_digest(cookie_token, header_token):
-                raise HTTPException(
+                return JSONResponse(
                     status_code=403,
-                    detail="Ongeldig CSRF token",
+                    content={"detail": "Ongeldig CSRF token — vernieuw de pagina en probeer het opnieuw"},
                 )
 
         response = await call_next(request)
