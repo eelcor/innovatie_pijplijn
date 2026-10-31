@@ -12,6 +12,7 @@ from app.database import get_db
 from app.helpers import render_template
 from app.models import User, MDS, Initiative
 from app.schemas import MDSCreate, MDSUpdate
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 router = APIRouter()
@@ -101,11 +102,27 @@ async def mds_detail(
         .all()
     )
 
+    # Initiatieven die nog gekoppeld KUNNEN worden aan deze MDS
+    # (niet-gekoppeld, of aan een ander MDS gekoppeld)
+    linkable_initiatives = (
+        db.query(Initiative)
+        .filter(
+            or_(
+                Initiative.mds_id.is_(None),
+                Initiative.mds_id == "",
+                Initiative.mds_id != mds_id,
+            )
+        )
+        .order_by(Initiative.title.asc())
+        .all()
+    )
+
     return render_template(
         "mds_detail.html",
         request=request,
         mds=mds,
         initiatives=initiatives,
+        linkable_initiatives=linkable_initiatives,
     )
 
 

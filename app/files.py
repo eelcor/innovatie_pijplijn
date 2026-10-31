@@ -108,7 +108,16 @@ def resolve_upload_dir() -> str:
     return UPLOAD_DIR
 
 
+def resolve_full_path(storage_path: str) -> str:
+    """Resolve a relative storage_path to an absolute path under UPLOAD_DIR.
+
+    Alle opgeslagen bestanden leven op het persistent volume (/app/data/uploads),
+    NIET in de code-directory (/app). Zo overleven ze een image-rebuild.
+    """
+    return os.path.join(UPLOAD_DIR, storage_path)
+
+
 def ensure_storage_dir(storage_path: str) -> None:
     """Create the directory for a storage path if it doesn't exist."""
-    full_path = os.path.join(BASE_DIR, storage_path)
+    full_path = resolve_full_path(storage_path)
     os.makedirs(os.path.dirname(full_path), exist_ok=True)

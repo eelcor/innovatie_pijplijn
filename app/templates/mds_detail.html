@@ -19,6 +19,14 @@
     {% endif %}
   </div>
   <div class="header-actions">
+    {% if linkable_initiatives %}
+    <button class="btn btn-primary" onclick="openLinkInitiativeModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+      Koppel initiatief
+    </button>
+    {% endif %}
     <button class="btn btn-secondary" onclick="openEditMDSModal()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
@@ -61,6 +69,37 @@
 </div>
 {% endif %}
 
+<!-- Link initiative modal -->
+<div class="modal-overlay" id="modal-link-initiative">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">Initiatief koppelen aan {{ mds.name }}</h2>
+      <button class="modal-close" onclick="closeModal('link-initiative')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <form id="form-link-initiative">
+      <div class="modal-body">
+        <div class="form-field">
+          <label class="form-label form-label-required">Initiatief</label>
+          <select name="initiative_id" class="form-select" required>
+            <option value="">Selecteer een initiatief...</option>
+            {% for init in linkable_initiatives %}
+            <option value="{{ init.id }}">{{ init.title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('link-initiative')">Annuleren</button>
+        <button type="submit" class="btn btn-primary">Koppelen</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- Edit MDS modal -->
 <div class="modal-overlay" id="modal-edit-mds">
   <div class="modal">
@@ -96,10 +135,35 @@
 {% block scripts %}
 <script>
 const mdsId = '{{ mds.id }}';
+const mdsName = {{ mds.name | tojson }};
 
 function openEditMDSModal() {
   openModal('edit-mds');
 }
+
+function openLinkInitiativeModal() {
+  openModal('link-initiative');
+}
+
+document.getElementById('form-link-initiative').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const initiativeId = formData.get('initiative_id');
+  if (!initiativeId) return;
+
+  try {
+    await apiCall('/api/initiatieven/' + initiativeId, {
+      method: 'PUT',
+      body: JSON.stringify({ mds_id: mdsId }),
+    });
+    closeModal('link-initiative');
+    showToast('Initiatief gekoppeld aan ' + mdsName);
+    location.reload();
+  } catch (err) {
+    console.error(err);
+    showToast('Koppelen mislukt: ' + (err.message || 'onbekende fout'));
+  }
+});
 
 document.getElementById('form-edit-mds').addEventListener('submit', async (e) => {
   e.preventDefault();

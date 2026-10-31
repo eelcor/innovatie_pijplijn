@@ -1439,6 +1439,13 @@
       }
     });
 
+    // MDS: stuur expliciet mee (UUID óf null) zodat een MDS-ontkoppeling
+    // ("Geen MDS geselecteerd") ook daadwerkelijk wordt doorgezet.
+    const mdsSelect = document.querySelector('#modal-edit-initiative select[name="mds_id"]');
+    if (mdsSelect) {
+      data['mds_id'] = mdsSelect.value || null;
+    }
+
     // Handle multi-select tag_ids separately
     const tagSelect = document.getElementById('edit-tag-select');
     if (tagSelect) {
@@ -1644,7 +1651,8 @@
     const formData = new FormData(e.target);
 
     try {
-      await fetch(ROUTES.dossierFileUpload.replace('__ID__', initiativeId), {
+      // apiCall voegt het CSRF-token toe en hanteert FormData (geen Content-Type)
+      await apiCall(ROUTES.dossierFileUpload.replace('__ID__', initiativeId), {
         method: 'POST',
         body: formData,
       });
@@ -1653,6 +1661,7 @@
       loadDossier();
     } catch (err) {
       console.error(err);
+      showToast('Upload mislukt: ' + (err.message || 'onbekende fout'));
     }
   });
 

@@ -16,10 +16,9 @@ from app.auth import (
 from app.database import get_db
 from app.files import (
     MAX_FILE_SIZE,
-    BASE_DIR,
-    UPLOAD_DIR,
     ensure_storage_dir,
     generate_storage_path,
+    resolve_full_path,
     safe_content_disposition,
     _sanitize_filename,
 )
@@ -148,7 +147,7 @@ async def bestand_uploaden(
 
     storage_path, unique_name = generate_storage_path("initiatives", initiative_id, file.filename)
     ensure_storage_dir(storage_path)
-    full_path = os.path.join(BASE_DIR, storage_path)
+    full_path = resolve_full_path(storage_path)
 
     try:
         # Eerst bestand schrijven
@@ -222,7 +221,7 @@ async def bestand_downloaden(
     if not f:
         raise HTTPException(status_code=404, detail="Bestand niet gevonden")
 
-    full_path = os.path.join(BASE_DIR, f.storage_path)
+    full_path = resolve_full_path(f.storage_path)
     if not os.path.exists(full_path):
         raise HTTPException(status_code=404, detail="Bestand bestaat niet meer op de schijf")
 
@@ -253,7 +252,7 @@ async def bestand_viewen(
             detail="Dit bestandstype kan niet worden weergegeven. Download het in plaats daarvan.",
         )
 
-    full_path = os.path.join(BASE_DIR, f.storage_path)
+    full_path = resolve_full_path(f.storage_path)
     if not os.path.exists(full_path):
         raise HTTPException(status_code=404, detail="Bestand bestaat niet meer op de schijf")
 
@@ -276,7 +275,7 @@ async def bestand_verwijderen(
     if not f:
         raise HTTPException(status_code=404, detail="Bestand niet gevonden")
 
-    full_path = os.path.join(BASE_DIR, f.storage_path)
+    full_path = resolve_full_path(f.storage_path)
     if os.path.exists(full_path):
         os.remove(full_path)
 
