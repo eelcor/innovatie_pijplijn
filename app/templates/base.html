@@ -1511,6 +1511,33 @@
             </div>
           </div>
 
+          <!-- AI-inzet -->
+          <fieldset style="border:1px solid var(--border);border-radius:8px;padding:12px 14px 6px;margin:12px 0 0;">
+            <legend style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);padding:0 6px;">AI-inzet</legend>
+            <div class="form-row">
+              <div class="form-field">
+                <label class="form-label">Type AI-gebruik</label>
+                <select name="type_ai_gebruik" class="form-select">
+                  <option value="">Selecteer type</option>
+                  {% set ai_types = ['bouwen_met_ai', 'ai_in_bouwsels', 'ai_in_bestaande_tools', 'persoonlijke_productiviteit', 'mix'] %}
+                  {% for t in ai_types %}
+                  <option value="{{ t }}">{{ aiTypeLabel(t) }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="form-label">AI-toepassing</label>
+                <select name="ai_applicatie_model" class="form-select">
+                  <option value="">Selecteer model</option>
+                  {% set ai_app_models = ['saas', 'on_premise', 'binnen_applicatie', 'maatwerk'] %}
+                  {% for m in ai_app_models %}
+                  <option value="{{ m }}">{{ aiAppModelLabel(m) }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+          </fieldset>
+
           <!-- v0.2: Context & Governance -->
           <fieldset style="border:1px solid var(--border);border-radius:8px;padding:12px 14px 6px;margin:12px 0 0;">
             <legend style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);padding:0 6px;">Context & Governance</legend>

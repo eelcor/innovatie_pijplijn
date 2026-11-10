@@ -199,6 +199,7 @@ async def initiatief_aanmaken(
             trekker=data.trekker,
             owner=data.owner,
             type_ai_gebruik=data.type_ai_gebruik,
+            ai_applicatie_model=data.ai_applicatie_model,
             cluster=data.cluster,
             afdeling=data.afdeling,
             team=data.team,
