@@ -22,6 +22,7 @@ TypeAiGebruik = Literal[
     "persoonlijke_productiviteit",
     "mix",
 ]
+AiApplicatieModel = Literal["saas", "on_premise", "binnen_applicatie"]
 HypothesisType = Literal["value", "growth", "compliance"]
 HypothesisStatus = Literal["open", "bevestigd", "weerlegd", "vervallen"]
 
@@ -41,6 +42,7 @@ class InitiativeCreate(BaseModel):
     trekker: Optional[str] = None
     owner: Optional[str] = None
     type_ai_gebruik: Optional[TypeAiGebruik] = None
+    ai_applicatie_model: Optional[AiApplicatieModel] = None
     # v0.2: nieuwe velden
     cluster: Optional[str] = None
     afdeling: Optional[str] = None
@@ -76,6 +78,7 @@ class InitiativeUpdate(BaseModel):
     trekker: Optional[str] = None
     owner: Optional[str] = None
     type_ai_gebruik: Optional[TypeAiGebruik] = None
+    ai_applicatie_model: Optional[AiApplicatieModel] = None
     stop_reason: Optional[str] = None
     # v0.2: nieuwe velden
     cluster: Optional[str] = None

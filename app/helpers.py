@@ -63,6 +63,8 @@ ROUTE_MAP = {
     # MDS teams
     "mds_list": ("/api/mds", "/lijst"),
     "mds_detail": ("/api/mds", "/{id}"),
+    "mds_export_csv": ("/api/mds", "/{id}/export/csv"),
+    "mds_export_xlsx": ("/api/mds", "/{id}/export/xlsx"),
     # Tags
     "tags_list": ("/api/tags", "/lijst"),
     "tag_detail": ("/api/tags", "/{id}"),
@@ -201,6 +203,16 @@ def ai_type_label(type_val: str) -> str:
         "mix": "Mix",
     }
     return labels.get(type_val, type_val or "")
+
+
+def ai_applicatie_model_label(val: str) -> str:
+    """Model van de AI-toepassing in leesbare vorm (SaaS / on-premise / in een applicatie)."""
+    labels = {
+        "saas": "SaaS",
+        "on_premise": "On-premise",
+        "binnen_applicatie": "Binnen een applicatie",
+    }
+    return labels.get(val, val or "")
 
 
 # --- v0.2: Nieuwe label functies ---
@@ -393,6 +405,7 @@ templates.env.globals["statusLabel"] = status_label
 templates.env.globals["hypothesisTypeLabel"] = hypothesis_type_label
 templates.env.globals["hypothesisStatusLabel"] = hypothesis_status_label
 templates.env.globals["aiTypeLabel"] = ai_type_label
+templates.env.globals["aiAppModelLabel"] = ai_applicatie_model_label
 templates.env.globals["formatDate"] = format_date
 templates.env.globals["formatFileSize"] = format_file_size
 templates.env.globals["renderMarkdown"] = render_markdown

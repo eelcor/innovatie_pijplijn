@@ -105,6 +105,13 @@
       </div>
       {% endif %}
 
+      {% if initiative.ai_applicatie_model %}
+      <div class="detail-field">
+        <div class="detail-label">AI-toepassing</div>
+        <div class="detail-value">{{ aiAppModelLabel(initiative.ai_applicatie_model) }}</div>
+      </div>
+      {% endif %}
+
       {% if initiative.mds_id or initiative.mds %}
       <div class="detail-field">
         <div class="detail-label">MDS team</div>
@@ -574,6 +581,18 @@
               {% set ai_types = ['bouwen_met_ai', 'ai_in_bouwsels', 'ai_in_bestaande_tools', 'persoonlijke_productiviteit', 'mix'] %}
               {% for t in ai_types %}
               <option value="{{ t }}" {% if initiative.type_ai_gebruik == t %}selected{% endif %}>{{ aiTypeLabel(t) }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label class="form-label">AI-toepassing</label>
+            <select name="ai_applicatie_model" class="form-select">
+              <option value="">Selecteer model</option>
+              {% set ai_app_models = ['saas', 'on_premise', 'binnen_applicatie'] %}
+              {% for m in ai_app_models %}
+              <option value="{{ m }}" {% if initiative.ai_applicatie_model == m %}selected{% endif %}>{{ aiAppModelLabel(m) }}</option>
               {% endfor %}
             </select>
           </div>
@@ -1444,6 +1463,13 @@
     const mdsSelect = document.querySelector('#modal-edit-initiative select[name="mds_id"]');
     if (mdsSelect) {
       data['mds_id'] = mdsSelect.value || null;
+    }
+
+    // AI-toepassing: expliciet sturen (waarde óf null) zodat "leegmaken"
+    // (Selecteer model) ook daadwerkelijk wordt doorgezet.
+    const aiAppSelect = document.querySelector('#modal-edit-initiative select[name="ai_applicatie_model"]');
+    if (aiAppSelect) {
+      data['ai_applicatie_model'] = aiAppSelect.value || null;
     }
 
     // Handle multi-select tag_ids separately

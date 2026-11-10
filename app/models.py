@@ -57,6 +57,10 @@ class Initiative(Base):
         ),
         nullable=True,
     )  # type AI-inzet
+    ai_applicatie_model = Column(
+        Enum("saas", "on_premise", "binnen_applicatie", name="ai_applicatie_model"),
+        nullable=True,
+    )  # hoe de AI-toepassing wordt gehost/deployed
     stop_reason = Column(Text, nullable=True)  # verplicht als status = gestopt
 
     # --- v0.2: nieuwe velden uit Excel inventarisatie ---
