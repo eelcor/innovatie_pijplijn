@@ -22,7 +22,7 @@ TypeAiGebruik = Literal[
     "persoonlijke_productiviteit",
     "mix",
 ]
-AiApplicatieModel = Literal["saas", "on_premise", "binnen_applicatie"]
+AiApplicatieModel = Literal["saas", "on_premise", "binnen_applicatie", "maatwerk"]
 HypothesisType = Literal["value", "growth", "compliance"]
 HypothesisStatus = Literal["open", "bevestigd", "weerlegd", "vervallen"]
 

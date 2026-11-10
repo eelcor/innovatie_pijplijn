@@ -211,6 +211,7 @@ def ai_applicatie_model_label(val: str) -> str:
         "saas": "SaaS",
         "on_premise": "On-premise",
         "binnen_applicatie": "Binnen een applicatie",
+        "maatwerk": "Maatwerk",
     }
     return labels.get(val, val or "")
 

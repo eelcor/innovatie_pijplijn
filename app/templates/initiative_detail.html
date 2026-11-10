@@ -590,7 +590,7 @@
             <label class="form-label">AI-toepassing</label>
             <select name="ai_applicatie_model" class="form-select">
               <option value="">Selecteer model</option>
-              {% set ai_app_models = ['saas', 'on_premise', 'binnen_applicatie'] %}
+              {% set ai_app_models = ['saas', 'on_premise', 'binnen_applicatie', 'maatwerk'] %}
               {% for m in ai_app_models %}
               <option value="{{ m }}" {% if initiative.ai_applicatie_model == m %}selected{% endif %}>{{ aiAppModelLabel(m) }}</option>
               {% endfor %}
